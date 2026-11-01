@@ -1,0 +1,46 @@
+name: Attesta dependency scan
+description: >-
+  Score every pinned dependency in package-lock.json / requirements.txt with the
+  Attesta scoring service. Fails the build on BLOCK; prints REVIEW and WARN.
+inputs:
+  api-url:
+    description: Base URL of the scoring service (HTTPS).
+    required: true
+  api-token:
+    description: Bearer token for the scoring service (pass a repository secret).
+    required: true
+  paths:
+    description: Space-separated lockfiles to scan.
+    default: package-lock.json requirements.txt
+  fail-on:
+    description: Lowest decision that fails the build (WARN, REVIEW or BLOCK).
+    default: BLOCK
+  on-error:
+    description: What to do when a dependency cannot be scored (fail or warn).
+    default: fail
+  include-dev:
+    description: Scan npm devDependencies too (true or false).
+    default: "true"
+  max-deps:
+    description: Maximum number of dependencies to scan.
+    default: "300"
+runs:
+  using: composite
+  steps:
+    - name: Scan dependencies
+      shell: bash
+      env:
+        ATTESTA_API_TOKEN: ${{ inputs.api-token }}
+        IN_API_URL: ${{ inputs.api-url }}
+        IN_PATHS: ${{ inputs.paths }}
+        IN_FAIL_ON: ${{ inputs.fail-on }}
+        IN_ON_ERROR: ${{ inputs.on-error }}
+        IN_INCLUDE_DEV: ${{ inputs.include-dev }}
+        IN_MAX_DEPS: ${{ inputs.max-deps }}
+        PYTHONPATH: ${{ github.action_path }}/../../../src
+      run: |
+        # Inputs travel through env vars, never interpolated into the script text.
+        dev_flag="--include-dev"; [ "$IN_INCLUDE_DEV" = "true" ] || dev_flag="--no-include-dev"
+        # shellcheck disable=SC2086
+        python3 -m attesta.ci.scan --api-url "$IN_API_URL" --paths $IN_PATHS \
+          --fail-on "$IN_FAIL_ON" --on-error "$IN_ON_ERROR" "$dev_flag" --max-deps "$IN_MAX_DEPS"

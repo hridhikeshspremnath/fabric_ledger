@@ -4,13 +4,12 @@ import logging
 
 import uvicorn
 
-from attesta.backends.sqlite import SqliteBackend
+from attesta.backends.factory import create_backend
 from attesta.gateway.app import create_app
 from attesta.gateway.protocol import MtlsH11Protocol
 from attesta.gateway.settings import GatewaySettings, load_settings
 from attesta.gateway.svid import SvidSource, create_svid_source
 from attesta.gateway.tls import build_server_context, reload_context
-from attesta.ledger.checkpoints import CheckpointSigner
 from attesta.policy.engine import load_policy
 from attesta.records.signing import KeyRegistry
 
@@ -34,7 +33,7 @@ async def run(settings: GatewaySettings) -> None:
     provider, material = create_svid_source(settings)
     ctx = build_server_context(material)
 
-    backend = SqliteBackend(settings.db_path, CheckpointSigner.load_or_create(settings.checkpoint_key_dir))
+    backend = create_backend(settings, provider)
     app = create_app(settings, backend, KeyRegistry.load(settings.scorer_keys_path),
                      load_policy(settings.policy_path))
 

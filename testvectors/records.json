@@ -1,0 +1,55 @@
+{
+ "description": "Schema validation and policy vectors. Mutations apply to canonical.json signing.record; 'set' replaces a field, 'delete' removes fields. Signature is NOT checked here.",
+ "mutations": [
+  {"name": "baseline", "valid": true},
+  {"name": "optional_fields_omitted", "delete": ["llm_evidence_hash", "schema_version"], "valid": true},
+  {"name": "flip_flag", "set": {"flag_obfuscation": true}, "valid": true},
+  {"name": "llm_not_run_null_evidence", "set": {"llm_verdict": "NOT_RUN", "llm_evidence_hash": null}, "valid": true},
+  {"name": "unverified_without_digest", "set": {"attestation_verified": false, "attestation_digest": null}, "valid": true},
+  {"name": "score_min", "set": {"risk_score": 0}, "valid": true},
+  {"name": "score_max", "set": {"risk_score": 1000}, "valid": true},
+  {"name": "score_too_high", "set": {"risk_score": 1001}, "valid": false},
+  {"name": "score_negative", "set": {"risk_score": -1}, "valid": false},
+  {"name": "score_float", "set": {"risk_score": 100.5}, "valid": false},
+  {"name": "score_string", "set": {"risk_score": "100"}, "valid": false},
+  {"name": "digest_wrong_algo", "set": {"artifact_digest": "md5:abc"}, "valid": false},
+  {"name": "digest_uppercase", "set": {"artifact_digest": "sha256:C7C5C1D70C5DEC4416AB6158AFD0B223EF40C29B1DC1F97ED9428B94D4CADB1C"}, "valid": false},
+  {"name": "record_id_not_uuid", "set": {"record_id": "not-a-uuid"}, "valid": false},
+  {"name": "run_id_has_space", "set": {"run_id": "run 1"}, "valid": false},
+  {"name": "submitter_not_spiffe", "set": {"submitted_by_spiffe_id": "https://example.org/x"}, "valid": false},
+  {"name": "cert_fingerprint_short", "set": {"caller_cert_sha256": "abab"}, "valid": false},
+  {"name": "ecosystem_uppercase", "set": {"ecosystem": "PyPI"}, "valid": false},
+  {"name": "package_has_space", "set": {"package": "bad pkg"}, "valid": false},
+  {"name": "schema_version_2", "set": {"schema_version": 2}, "valid": false},
+  {"name": "extra_field", "set": {"surprise": 1}, "valid": false},
+  {"name": "missing_decision", "delete": ["decision"], "valid": false},
+  {"name": "decision_unknown", "set": {"decision": "MAYBE"}, "valid": false},
+  {"name": "band_unknown", "set": {"risk_band": "SEVERE"}, "valid": false},
+  {"name": "llm_verdict_unknown", "set": {"llm_verdict": "UNKNOWN"}, "valid": false},
+  {"name": "flag_as_string", "set": {"flag_network": "true"}, "valid": false},
+  {"name": "verified_without_digest", "set": {"attestation_digest": null}, "valid": false},
+  {"name": "signature_wrong_length", "set": {"scorer_signature": "AAAA"}, "valid": false}
+ ],
+ "policy": {
+  "policy_version": "p1",
+  "bands": [
+   {"name": "LOW", "min_score": 0, "max_score": 399, "decision": "ALLOW"},
+   {"name": "MEDIUM", "min_score": 400, "max_score": 699, "decision": "WARN"},
+   {"name": "HIGH", "min_score": 700, "max_score": 899, "decision": "REVIEW"},
+   {"name": "CRITICAL", "min_score": 900, "max_score": 1000, "decision": "BLOCK"}
+  ],
+  "cases": [
+   {"score": 0, "verified": true, "band": "LOW", "decision": "ALLOW"},
+   {"score": 399, "verified": true, "band": "LOW", "decision": "ALLOW"},
+   {"score": 400, "verified": true, "band": "MEDIUM", "decision": "WARN"},
+   {"score": 699, "verified": true, "band": "MEDIUM", "decision": "WARN"},
+   {"score": 700, "verified": true, "band": "HIGH", "decision": "REVIEW"},
+   {"score": 899, "verified": true, "band": "HIGH", "decision": "REVIEW"},
+   {"score": 900, "verified": true, "band": "CRITICAL", "decision": "BLOCK"},
+   {"score": 1000, "verified": true, "band": "CRITICAL", "decision": "BLOCK"},
+   {"score": 100, "verified": false, "band": "LOW", "decision": "REVIEW"},
+   {"score": 500, "verified": false, "band": "MEDIUM", "decision": "REVIEW"},
+   {"score": 950, "verified": false, "band": "CRITICAL", "decision": "BLOCK"}
+  ]
+ }
+}

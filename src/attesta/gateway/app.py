@@ -3,11 +3,12 @@ valid in-trust-domain client (enforced by the TLS layer plus `require_peer`)."""
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 
 from attesta.backends.base import (
-    DuplicateRecordError, LedgerBackend, LedgerEmptyError, RecordNotFoundError)
-from attesta.backends.models import Checkpoint, InclusionProof, LedgerEntry
+    DuplicateRecordError, LedgerBackend, LedgerEmptyError, LedgerRejectedError,
+    LedgerUnavailableError, RecordNotFoundError)
+from attesta.backends.models import AnyCheckpoint, LedgerEntry, Proof
 from attesta.gateway.identity import PeerIdentity, get_peer_identity
 from attesta.gateway.settings import GatewaySettings
 from attesta.gateway.writer import SingleWriter
@@ -65,11 +66,24 @@ def create_app(settings: GatewaySettings, backend: LedgerBackend,
             return await writer.submit(record)
         except DuplicateRecordError as exc:
             raise HTTPException(status_code=409, detail="duplicate run_id or record_id") from exc
+        except LedgerRejectedError as exc:
+            raise HTTPException(status_code=422, detail=f"ledger rejected the record: {exc}") from exc
+        except LedgerUnavailableError as exc:
+            raise HTTPException(status_code=503, detail="ledger unavailable") from exc
 
     @app.get("/records", response_model=list[LedgerEntry])
-    def list_records(limit: int = Query(100, ge=1, le=500), after: int = Query(0, ge=0),
+    def list_records(response: Response, limit: int = Query(100, ge=1, le=500),
+                     cursor: str = Query("", max_length=2048),
                      _: PeerIdentity = Depends(require_peer)) -> list[LedgerEntry]:
-        return backend.list(limit=limit, after_sequence=after)
+        """Oldest-first page. Pass the X-Next-Cursor response header back as `cursor`."""
+        try:
+            page = backend.list_page(limit=limit, cursor=cursor)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="invalid cursor") from exc
+        except LedgerUnavailableError as exc:
+            raise HTTPException(status_code=503, detail="ledger unavailable") from exc
+        response.headers["X-Next-Cursor"] = page.next_cursor
+        return page.entries
 
     @app.get("/records/{record_id}", response_model=LedgerEntry)
     def get_record(record_id: str, _: PeerIdentity = Depends(require_peer)) -> LedgerEntry:
@@ -78,18 +92,22 @@ def create_app(settings: GatewaySettings, backend: LedgerBackend,
             raise HTTPException(status_code=404, detail="record not found")
         return entry
 
-    @app.get("/proof/{record_id}", response_model=InclusionProof)
-    def get_proof(record_id: str, _: PeerIdentity = Depends(require_peer)) -> InclusionProof:
+    @app.get("/proof/{record_id}", response_model=Proof)
+    def get_proof(record_id: str, _: PeerIdentity = Depends(require_peer)) -> Proof:
         try:
             return backend.proof(record_id)
         except (RecordNotFoundError, LedgerEmptyError) as exc:
             raise HTTPException(status_code=404, detail="record not found") from exc
+        except LedgerUnavailableError as exc:
+            raise HTTPException(status_code=503, detail="ledger unavailable") from exc
 
-    @app.get("/checkpoint", response_model=Checkpoint)
-    def get_checkpoint(_: PeerIdentity = Depends(require_peer)) -> Checkpoint:
+    @app.get("/checkpoint", response_model=AnyCheckpoint)
+    def get_checkpoint(_: PeerIdentity = Depends(require_peer)) -> AnyCheckpoint:
         try:
             return backend.checkpoint()
         except LedgerEmptyError as exc:
             raise HTTPException(status_code=404, detail="ledger is empty") from exc
+        except LedgerUnavailableError as exc:
+            raise HTTPException(status_code=503, detail="ledger unavailable") from exc
 
     return app

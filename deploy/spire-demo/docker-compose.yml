@@ -70,6 +70,7 @@ services:
     pid: "service:spire-agent"
     environment:
       ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
+      ATTESTA_BACKEND: ${ATTESTA_BACKEND:-sqlite}
     volumes:
       - agent-socket:/run/spire/sockets:ro
       - gateway-data:/data
@@ -106,6 +107,134 @@ services:
     read_only: true
     cap_drop: ["ALL"]
     mem_limit: 96m
+
+  # Fabric bridges (Go). They hold the Fabric identities; CI workloads never do.
+  # Start with scripts/bridge-up.sh. Each joins the Fabric network (attesta-fabric)
+  # as well as this stack's network, and only accepts one SPIFFE client ID.
+  fabric-bridge:
+    build:
+      context: ../../bridge
+    image: attesta-fabric-bridge:local
+    profiles: ["fabric"]
+    user: "1004"
+    pid: "service:spire-agent"
+    networks: [default, fabric]
+    environment:
+      BRIDGE_ROLE: gateway
+      BRIDGE_SPIFFE_SOCKET: unix:///run/spire/sockets/agent.sock
+      BRIDGE_PEER_ENDPOINT: peer0.attesta.example.com:7051
+      BRIDGE_PEER_HOST_ALIAS: peer0.attesta.example.com
+      BRIDGE_PEER_TLS_CA: /fabric/tlsca.pem
+      BRIDGE_MSP_ID: AttestaMSP
+      BRIDGE_CERT_PATH: /fabric/cert.pem
+      BRIDGE_KEY_PATH: /fabric/key.pem
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - ../../network/organizations/peerOrganizations/attesta.example.com/peers/peer0.attesta.example.com/tls/ca.crt:/fabric/tlsca.pem:ro
+      - ../../network/organizations/peerOrganizations/attesta.example.com/users/User1@attesta.example.com/msp/signcerts/User1@attesta.example.com-cert.pem:/fabric/cert.pem:ro
+      - ../../network/organizations/peerOrganizations/attesta.example.com/users/User1@attesta.example.com/msp/keystore/priv_sk:/fabric/key.pem:ro
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 64m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8444"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  fabric-bridge-auditor:
+    build:
+      context: ../../bridge
+    image: attesta-fabric-bridge:local
+    profiles: ["fabric"]
+    user: "1005"
+    pid: "service:spire-agent"
+    networks: [default, fabric]
+    environment:
+      BRIDGE_ROLE: auditor
+      BRIDGE_SPIFFE_SOCKET: unix:///run/spire/sockets/agent.sock
+      BRIDGE_PEER_ENDPOINT: peer0.auditor.example.com:7051
+      BRIDGE_PEER_HOST_ALIAS: peer0.auditor.example.com
+      BRIDGE_PEER_TLS_CA: /fabric/tlsca.pem
+      BRIDGE_MSP_ID: AuditorMSP
+      BRIDGE_CERT_PATH: /fabric/cert.pem
+      BRIDGE_KEY_PATH: /fabric/key.pem
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - ../../network/organizations/peerOrganizations/auditor.example.com/peers/peer0.auditor.example.com/tls/ca.crt:/fabric/tlsca.pem:ro
+      - ../../network/organizations/peerOrganizations/auditor.example.com/users/User1@auditor.example.com/msp/signcerts/User1@auditor.example.com-cert.pem:/fabric/cert.pem:ro
+      - ../../network/organizations/peerOrganizations/auditor.example.com/users/User1@auditor.example.com/msp/keystore/priv_sk:/fabric/key.pem:ro
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 64m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8444"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Auditor CLI (uid 1006, SPIFFE .../auditor): scripts/auditor-override.sh
+  auditor-cli:
+    image: attesta-spire-gateway:local
+    profiles: ["auditor"]
+    user: "1006"
+    pid: "service:spire-agent"
+    command: ["attesta.tools.auditor_override"]
+    environment:
+      ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - ../../config:/config:ro
+    tmpfs: ["/tmp"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 96m
+
+  # Scoring service: runs as the scoring-service identity (uid 1002), downloads
+  # packages (never installs them), signs TrustRecords and submits to the gateway.
+  # HTTP API for CI on 127.0.0.1:8080 (put TLS in front for anything beyond localhost).
+  # Start with scripts/scorer-up.sh; one-off scoring with scripts/score.sh.
+  scorer: &scorer
+    image: attesta-spire-gateway:local
+    profiles: ["scoring"]
+    user: "1002"
+    pid: "service:spire-agent"
+    command: ["attesta.scoring.cli", "serve"]
+    environment:
+      ATTESTA_SCORING_CONFIG: /config/scoring.yaml
+      ATTESTA_SCORING_API_TOKEN: ${ATTESTA_SCORING_API_TOKEN:-}
+      ATTESTA_SCORING_SCORER_KEY_PATH: /run/attesta/scorer-dev-1.key
+      ATTESTA_SCORING_ALLOW_KEY_IN_REPO: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - ../../config:/config:ro
+      - ./.runtime/scorer-dev-1.key:/run/attesta/scorer-dev-1.key:ro
+    tmpfs: ["/tmp"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  scorer-cli:
+    <<: *scorer
+    profiles: ["scoring-cli"]
+    command: ["attesta.scoring.cli", "score"]
+    ports: []
+    healthcheck:
+      disable: true
+
+networks:
+  fabric:
+    external: true
+    name: attesta-fabric
 
 volumes:
   gateway-data:

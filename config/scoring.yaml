@@ -1,0 +1,32 @@
+# Scoring service settings (container paths). Any field can be overridden by an
+# ATTESTA_SCORING_<FIELD> env var. Keys never live in this repo.
+trust_domain: attesta.example.org
+spiffe_socket: unix:///run/spire/sockets/agent.sock
+scoring_spiffe_id: spiffe://attesta.example.org/scoring-service
+gateway_host: gateway
+gateway_port: 8443
+gateway_spiffe_id: spiffe://attesta.example.org/gateway
+
+scorer_key_path: /run/attesta/scorer-dev-1.key   # mounted from outside the repo
+scorer_key_id: scorer-dev-1
+policy_path: /config/policy.yaml
+
+# Swap these for the exported model / real extractors: "package.module:callable".
+model_factory: attesta.scoring.reference:build_model
+extractor_factory: attesta.scoring.reference:build_extractors
+aux_threshold_permille: 500
+
+runner_class: scoring-service
+node_attestor: join_token
+attestation_mode: none          # none => policy downgrades ALLOW/WARN to REVIEW
+
+max_download_bytes: 52428800
+max_uncompressed_bytes: 209715200
+max_scanned_bytes: 20971520
+max_file_bytes: 1048576
+max_files: 5000
+fetch_timeout_seconds: 30
+result_cache_seconds: 3600
+max_concurrent: 4
+api_host: 0.0.0.0
+api_port: 8080

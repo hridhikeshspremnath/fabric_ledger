@@ -1,20 +1,36 @@
-"""Backend-neutral result types (JSON-serializable, integers only)."""
-from typing import Optional
+"""Backend-neutral result types (JSON-serializable, integers only).
 
-from pydantic import BaseModel
+Proofs and checkpoints are tagged with `kind` because SQLite (Merkle tree +
+signed checkpoint) and Fabric (block hash chain) prove inclusion differently.
+"""
+from typing import Any, Literal, Optional, Union
+
+from pydantic import BaseModel, Field
 
 from attesta.records.trust_record import TrustRecord
 
 
 class LedgerEntry(BaseModel):
-    sequence: int
+    # SQLite-only chain fields are optional so Fabric entries fit the same shape.
+    sequence: Optional[int] = None
     record: TrustRecord
-    timestamp: int  # unix seconds
-    previous_record_hash: str
+    timestamp: int  # unix seconds (ledger time / Fabric tx timestamp)
+    previous_record_hash: Optional[str] = None
     record_hash: str
+    # Fabric-only fields.
+    tx_id: Optional[str] = None
+    block_number: Optional[int] = None
+    effective_decision: Optional[str] = None  # reflects auditor overrides
+    overrides: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ListPage(BaseModel):
+    entries: list[LedgerEntry]
+    next_cursor: str = ""  # opaque; empty means no more pages
 
 
 class InclusionProof(BaseModel):
+    kind: Literal["merkle"] = "merkle"
     record_id: str
     record_hash: str
     leaf_hash: str
@@ -24,7 +40,21 @@ class InclusionProof(BaseModel):
     proof: list[dict[str, str]]
 
 
+class FabricProof(BaseModel):
+    kind: Literal["fabric"] = "fabric"
+    record_id: str
+    tx_id: str
+    block_number: int
+    block_hash: str
+    previous_block_hash: str
+    data_hash: str
+    validation_code: str
+    chain_height: int
+    chain_tip_hash: str
+
+
 class Checkpoint(BaseModel):
+    kind: Literal["merkle"] = "merkle"
     version: int
     record_count: int
     merkle_root: str
@@ -32,8 +62,20 @@ class Checkpoint(BaseModel):
     signature: str
 
 
+class FabricCheckpoint(BaseModel):
+    kind: Literal["fabric"] = "fabric"
+    channel: str
+    height: int
+    current_block_hash: str
+    previous_block_hash: str
+
+
 class ChainResult(BaseModel):
     valid: bool
     records_checked: int
     failed_record: Optional[str] = None
     reason: Optional[str] = None
+
+
+Proof = Union[InclusionProof, FabricProof]
+AnyCheckpoint = Union[Checkpoint, FabricCheckpoint]

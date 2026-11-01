@@ -1,0 +1,21 @@
+# Example workflow (copy to .github/workflows/). GitHub-hosted runners only.
+# Secrets: ATTESTA_API_TOKEN. Variable: ATTESTA_API_URL (HTTPS URL of the scoring service).
+name: dependency-scan
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  attesta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/attesta-scan   # or owner/attesta/.github/actions/attesta-scan@<sha>
+        with:
+          api-url: ${{ vars.ATTESTA_API_URL }}
+          api-token: ${{ secrets.ATTESTA_API_TOKEN }}
+          fail-on: BLOCK

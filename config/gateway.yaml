@@ -16,3 +16,12 @@ svid_refresh_seconds: 300
 svid_fallback: false
 svid_fallback_refresh_seconds: 1200
 spire_agent_bin: /opt/spire/bin/spire-agent
+
+# Ledger backend: sqlite (dev) or fabric (via the Go bridge over SPIFFE mTLS).
+# Override per run with ATTESTA_BACKEND=fabric (see scripts/gateway-fabric.sh).
+backend: sqlite
+bridge_host: fabric-bridge
+bridge_port: 8444
+bridge_spiffe_id: spiffe://attesta.example.org/fabric-bridge
+auditor_bridge_host: fabric-bridge-auditor
+auditor_bridge_spiffe_id: spiffe://attesta.example.org/fabric-bridge-auditor

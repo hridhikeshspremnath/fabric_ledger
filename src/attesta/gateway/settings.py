@@ -24,6 +24,14 @@ class GatewaySettings(BaseModel):
     svid_fallback: bool = False
     svid_fallback_refresh_seconds: int = 1200
     spire_agent_bin: Path = Path("/opt/spire/bin/spire-agent")
+    # Ledger backend: "sqlite" (dev/tests) or "fabric" (via the Go bridge).
+    backend: str = "sqlite"
+    bridge_host: str = "fabric-bridge"
+    bridge_port: int = 8444
+    bridge_spiffe_id: str = "spiffe://attesta.example.org/fabric-bridge"
+    # Auditor-only bridge (used by attesta.tools.auditor_override).
+    auditor_bridge_host: str = "fabric-bridge-auditor"
+    auditor_bridge_spiffe_id: str = "spiffe://attesta.example.org/fabric-bridge-auditor"
 
 
 def load_settings(path: Path | None = None) -> GatewaySettings:

@@ -3,8 +3,8 @@
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 if [[ "${1:-}" == "--purge" ]]; then
-    dc --profile clients --profile gateway down -v --remove-orphans
+    dc --profile clients --profile gateway --profile fabric --profile auditor --profile scoring --profile scoring-cli down -v --remove-orphans
     rm -rf "$RUNTIME_DIR"
 else
-    dc --profile clients --profile gateway down --remove-orphans
+    dc --profile clients --profile gateway --profile fabric --profile auditor --profile scoring --profile scoring-cli down --remove-orphans
 fi

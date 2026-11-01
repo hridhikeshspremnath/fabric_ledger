@@ -17,6 +17,9 @@ dependencies = [
     "spiffe>=0.2",
 ]
 
+[project.scripts]
+attesta = "attesta.scoring.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27"]
 

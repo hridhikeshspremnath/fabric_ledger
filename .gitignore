@@ -47,3 +47,11 @@ deploy/spire-demo/.runtime/
 build/
 **/checkpoint_keys/
 **/scorer-*.key
+
+# Fabric network: generated identities, genesis block, packages, binaries, Go downloads
+network/organizations/
+network/channel-artifacts/
+network/bin/
+network/peercfg/
+network/downloads/
+.venv/

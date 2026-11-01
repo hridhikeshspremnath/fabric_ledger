@@ -3,7 +3,6 @@ import sqlite3
 import pytest
 
 from attesta.backends.base import DuplicateRecordError, LedgerEmptyError, RecordNotFoundError
-from attesta.backends.fabric import FabricBackend
 from attesta.ledger.checkpoints import verify_checkpoint, verify_inclusion
 
 
@@ -66,6 +65,12 @@ def test_empty_ledger_and_unknown_record(backend, signed):
         backend.proof("00000000-0000-0000-0000-000000000000")
 
 
-def test_fabric_backend_is_a_stub(signed):
-    with pytest.raises(NotImplementedError):
-        FabricBackend().append(signed())
+def test_list_page_uses_sequence_cursor(backend, signed):
+    for _ in range(3):
+        backend.append(signed())
+    first = backend.list_page(limit=2)
+    assert [e.sequence for e in first.entries] == [1, 2] and first.next_cursor == "2"
+    second = backend.list_page(limit=2, cursor=first.next_cursor)
+    assert [e.sequence for e in second.entries] == [3] and second.next_cursor == ""
+    with pytest.raises(ValueError):
+        backend.list_page(cursor="not-a-number")

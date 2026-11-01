@@ -1,0 +1,103 @@
+# 2 orgs (Attesta, Auditor), 1 peer each, 1 Raft orderer. Paths are relative to
+# this file's directory (FABRIC_CFG_PATH=network/config).
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/example.com/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('OrdererMSP.member')"}
+      Writers: {Type: Signature, Rule: "OR('OrdererMSP.member')"}
+      Admins: {Type: Signature, Rule: "OR('OrdererMSP.admin')"}
+    OrdererEndpoints:
+      - orderer.example.com:7050
+
+  - &Attesta
+    Name: AttestaMSP
+    ID: AttestaMSP
+    MSPDir: ../organizations/peerOrganizations/attesta.example.com/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('AttestaMSP.admin','AttestaMSP.peer','AttestaMSP.client')"}
+      Writers: {Type: Signature, Rule: "OR('AttestaMSP.admin','AttestaMSP.client')"}
+      Admins: {Type: Signature, Rule: "OR('AttestaMSP.admin')"}
+      Endorsement: {Type: Signature, Rule: "OR('AttestaMSP.peer')"}
+    AnchorPeers:
+      - Host: peer0.attesta.example.com
+        Port: 7051
+
+  - &Auditor
+    Name: AuditorMSP
+    ID: AuditorMSP
+    MSPDir: ../organizations/peerOrganizations/auditor.example.com/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('AuditorMSP.admin','AuditorMSP.peer','AuditorMSP.client')"}
+      Writers: {Type: Signature, Rule: "OR('AuditorMSP.admin','AuditorMSP.client')"}
+      Admins: {Type: Signature, Rule: "OR('AuditorMSP.admin')"}
+      Endorsement: {Type: Signature, Rule: "OR('AuditorMSP.peer')"}
+    AnchorPeers:
+      - Host: peer0.auditor.example.com
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins: {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+    LifecycleEndorsement: {Type: ImplicitMeta, Rule: "MAJORITY Endorsement"}
+    Endorsement: {Type: ImplicitMeta, Rule: "MAJORITY Endorsement"}
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer.example.com:7050
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.example.com
+        Port: 7050
+        ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+  BatchTimeout: 500ms
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins: {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+    BlockValidation: {Type: ImplicitMeta, Rule: "ANY Writers"}
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers: {Type: ImplicitMeta, Rule: "ANY Readers"}
+    Writers: {Type: ImplicitMeta, Rule: "ANY Writers"}
+    Admins: {Type: ImplicitMeta, Rule: "MAJORITY Admins"}
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  AttestaChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Attesta
+        - *Auditor
+      Capabilities: *ApplicationCapabilities

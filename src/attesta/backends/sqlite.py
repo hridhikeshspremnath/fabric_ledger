@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from attesta.backends.base import DuplicateRecordError, LedgerEmptyError, RecordNotFoundError
-from attesta.backends.models import ChainResult, Checkpoint, InclusionProof, LedgerEntry
+from attesta.backends.models import ChainResult, Checkpoint, InclusionProof, LedgerEntry, ListPage
 from attesta.ledger.checkpoints import CheckpointSigner, sign_checkpoint
 from attesta.ledger.merkle import build_merkle_tree, generate_proof, get_merkle_root, hash_leaf
 from attesta.records.canonical import canonical_bytes, sha256_hex
@@ -100,6 +100,13 @@ class SqliteBackend:
                 "SELECT * FROM trust_records WHERE sequence > ? ORDER BY sequence ASC LIMIT ?",
                 (after_sequence, limit)).fetchall()
         return [self._to_entry(row) for row in rows]
+
+    def list_page(self, limit: int = 100, cursor: str = "") -> ListPage:
+        """Cursor-based paging; the cursor is the last sequence number seen."""
+        after = int(cursor) if cursor else 0
+        entries = self.list(limit=limit, after_sequence=after)
+        full = len(entries) == limit and entries
+        return ListPage(entries=entries, next_cursor=str(entries[-1].sequence) if full else "")
 
     def _all_rows(self) -> list[sqlite3.Row]:
         with closing(self._connect()) as conn:

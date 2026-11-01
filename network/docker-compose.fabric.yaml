@@ -1,0 +1,135 @@
+# Fabric 2.5.16: 1 Raft orderer, 1 peer per org (LevelDB), chaincode-as-a-service.
+# Generated material (organizations/, peercfg/, channel-artifacts/) comes from
+# network/scripts/01-gen-crypto.sh and is gitignored.
+name: attesta-fabric
+
+x-peer: &peer
+  image: hyperledger/fabric-peer:2.5.16
+  command: peer node start
+  working_dir: /root
+  mem_limit: 384m
+  restart: unless-stopped
+
+networks:
+  default:
+    name: attesta-fabric
+
+services:
+  orderer.example.com:
+    image: hyperledger/fabric-orderer:2.5.16
+    command: orderer
+    mem_limit: 192m
+    restart: unless-stopped
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_LISTENPORT: "7050"
+      ORDERER_GENERAL_LOCALMSPID: OrdererMSP
+      ORDERER_GENERAL_LOCALMSPDIR: /var/hyperledger/orderer/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: none
+      ORDERER_CHANNELPARTICIPATION_ENABLED: "true"
+      ORDERER_ADMIN_TLS_ENABLED: "true"
+      ORDERER_ADMIN_TLS_CERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_ADMIN_TLS_PRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_ADMIN_TLS_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_ADMIN_TLS_CLIENTROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_ADMIN_LISTENADDRESS: 0.0.0.0:7053
+    volumes:
+      - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp:ro
+      - ./organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls:/var/hyperledger/orderer/tls:ro
+      - orderer-data:/var/hyperledger/production/orderer
+    ports:
+      - "127.0.0.1:7050:7050"
+      - "127.0.0.1:7053:7053"
+
+  peer0.attesta.example.com:
+    <<: *peer
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/peercfg
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_PEER_ID: peer0.attesta.example.com
+      CORE_PEER_ADDRESS: peer0.attesta.example.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer0.attesta.example.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.attesta.example.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.attesta.example.com:7051
+      CORE_PEER_LOCALMSPID: AttestaMSP
+      CORE_PEER_MSPCONFIGPATH: /etc/hyperledger/fabric/msp
+      CORE_LEDGER_STATE_STATEDATABASE: goleveldb
+      CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG: '{"peername":"peer0attesta"}'
+    volumes:
+      - ./organizations/peerOrganizations/attesta.example.com/peers/peer0.attesta.example.com/msp:/etc/hyperledger/fabric/msp:ro
+      - ./organizations/peerOrganizations/attesta.example.com/peers/peer0.attesta.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./peercfg:/etc/hyperledger/peercfg:ro
+      - peer0-attesta-data:/var/hyperledger/production
+    ports:
+      - "127.0.0.1:7051:7051"
+    depends_on: [orderer.example.com]
+
+  peer0.auditor.example.com:
+    <<: *peer
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/peercfg
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_PEER_ID: peer0.auditor.example.com
+      CORE_PEER_ADDRESS: peer0.auditor.example.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer0.auditor.example.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.auditor.example.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.auditor.example.com:7051
+      CORE_PEER_LOCALMSPID: AuditorMSP
+      CORE_PEER_MSPCONFIGPATH: /etc/hyperledger/fabric/msp
+      CORE_LEDGER_STATE_STATEDATABASE: goleveldb
+      CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG: '{"peername":"peer0auditor"}'
+    volumes:
+      - ./organizations/peerOrganizations/auditor.example.com/peers/peer0.auditor.example.com/msp:/etc/hyperledger/fabric/msp:ro
+      - ./organizations/peerOrganizations/auditor.example.com/peers/peer0.auditor.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./peercfg:/etc/hyperledger/peercfg:ro
+      - peer0-auditor-data:/var/hyperledger/production
+    ports:
+      - "127.0.0.1:9051:7051"
+    depends_on: [orderer.example.com]
+
+  # Chaincode servers (one per org). Started by 04-deploy-cc.sh once the
+  # package IDs are known: ATTESTA_CC_ID / AUDITOR_CC_ID.
+  attesta-trust-attesta:
+    image: attesta-trust-cc:local
+    profiles: ["chaincode"]
+    environment:
+      CHAINCODE_SERVER_ADDRESS: 0.0.0.0:9999
+      CHAINCODE_ID: ${ATTESTA_CC_ID:-unset}
+    mem_limit: 64m
+    restart: unless-stopped
+
+  attesta-trust-auditor:
+    image: attesta-trust-cc:local
+    profiles: ["chaincode"]
+    environment:
+      CHAINCODE_SERVER_ADDRESS: 0.0.0.0:9999
+      CHAINCODE_ID: ${AUDITOR_CC_ID:-unset}
+    mem_limit: 64m
+    restart: unless-stopped
+
+volumes:
+  orderer-data:
+  peer0-attesta-data:
+  peer0-auditor-data:
