@@ -27,3 +27,12 @@ join tokens, private keys, SVID private-key material, or runtime databases.
 
 Hyperledger Fabric integration, custom attestation APIs, Merkle proofs, and
 CI/CD policy enforcement are future implementation milestones.
+
+## Gateway and tests
+
+Package: `src/attesta` (ledger, backends, records, policy, gateway). Config in `config/`.
+
+    pip install -e ".[dev]"
+    pytest
+
+SPIRE + gateway demo: see `deploy/spire-demo/README.md`.

@@ -38,3 +38,12 @@ __pycache__/
 .pytest_cache/
 ledger/attestations_dev.db
 test-artifacts/
+
+# SPIRE demo runtime (bootstrap bundle)
+deploy/spire-demo/.runtime/
+
+# Packaging / keys
+*.egg-info/
+build/
+**/checkpoint_keys/
+**/scorer-*.key

@@ -1,0 +1,8 @@
+# Public keys only. Real/demo private keys never go in the repo.
+# Generate a demo pair: python -m attesta.tools.gen_scorer_key --out-dir <gitignored dir>
+keys:
+  - key_id: scorer-example-1
+    public_key: "<base64 raw 32-byte Ed25519 public key>"
+    not_before: "2026-01-01T00:00:00+00:00"
+    not_after: "2027-01-01T00:00:00+00:00"
+    revoked: false

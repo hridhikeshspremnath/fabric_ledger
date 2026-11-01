@@ -1,0 +1,13 @@
+.git
+.pytest_cache
+__pycache__
+*.egg-info
+tests
+docs
+infrastructure
+scripts
+deploy
+**/.runtime
+**/*.key
+**/*.pem
+.env*

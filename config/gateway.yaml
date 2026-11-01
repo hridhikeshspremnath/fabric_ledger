@@ -1,0 +1,18 @@
+# Gateway settings (container paths). Any field can be overridden by an
+# ATTESTA_<FIELD> env var, e.g. ATTESTA_DB_PATH.
+trust_domain: attesta.example.org
+gateway_spiffe_id: spiffe://attesta.example.org/gateway
+allowed_scorer_id: spiffe://attesta.example.org/scoring-service
+spiffe_socket: unix:///run/spire/sockets/agent.sock
+db_path: /data/ledger.db
+checkpoint_key_dir: /data/checkpoint_keys
+scorer_keys_path: /run/attesta/scorer_keys.yaml
+policy_path: /config/policy.yaml
+listen_host: 0.0.0.0
+listen_port: 8443
+queue_maxsize: 256
+svid_refresh_seconds: 300
+# Fallback when py-spiffe's X509Source cannot connect (fetch + slow refresh).
+svid_fallback: false
+svid_fallback_refresh_seconds: 1200
+spire_agent_bin: /opt/spire/bin/spire-agent

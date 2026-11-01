@@ -1,0 +1,114 @@
+# Attesta SPIRE demo. Trust domain: attesta.example.org (set in conf/*.conf).
+# Start with scripts/up.sh, not plain `docker compose up`: the agent needs a
+# one-time join token that up.sh generates and injects via JOIN_TOKEN.
+name: attesta-spire
+
+services:
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:1.15.3
+    command: ["-config", "/etc/spire/server.conf"]
+    volumes:
+      - ./conf/server.conf:/etc/spire/server.conf:ro
+      - server-data:/var/lib/spire/server
+    mem_limit: 128m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/spire/bin/spire-server", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  spire-agent:
+    image: ghcr.io/spiffe/spire-agent:1.15.3
+    command: ["-config", "/etc/spire/agent.conf", "-joinToken", "${JOIN_TOKEN:-}"]
+    depends_on:
+      spire-server:
+        condition: service_healthy
+    volumes:
+      - ./conf/agent.conf:/etc/spire/agent.conf:ro
+      - ./.runtime/bootstrap.crt:/etc/spire/bootstrap.crt:ro
+      - agent-data:/var/lib/spire/agent
+      - agent-socket:/run/spire/sockets
+    mem_limit: 96m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/spire/bin/spire-agent", "healthcheck", "-socketPath", "/run/spire/sockets/agent.sock"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Workload stand-ins. They share the agent's PID namespace so the agent's
+  # `unix` attestor can resolve the caller's PID/UID. Run on demand:
+  #   scripts/test-client.sh [ci-runner|scoring-service]
+  ci-runner: &workload
+    build: ./client
+    image: attesta-spire-client:local
+    profiles: ["clients"]
+    user: "1001"
+    pid: "service:spire-agent"
+    network_mode: none
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+    tmpfs: ["/tmp"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 32m
+
+  scoring-service:
+    <<: *workload
+    user: "1002"
+
+  # Attesta gateway (mTLS, SPIFFE ID spiffe://attesta.example.org/gateway, uid 1003).
+  # Start with scripts/gateway-up.sh (uses --no-deps so the agent is untouched).
+  gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/spire-demo/gateway/Dockerfile
+    image: attesta-spire-gateway:local
+    profiles: ["gateway"]
+    user: "1003"
+    pid: "service:spire-agent"
+    environment:
+      ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - gateway-data:/data
+      - ../../config:/config:ro
+      - ./.runtime/scorer_keys.yaml:/run/attesta/scorer_keys.yaml:ro
+    tmpfs: ["/tmp"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 192m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8443), 3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Runs as the scoring-service identity (uid 1002) ON the compose network and
+  # submits one signed record. Run: scripts/demo-submit.sh
+  demo-submit:
+    image: attesta-spire-gateway:local
+    profiles: ["clients"]
+    user: "1002"
+    pid: "service:spire-agent"
+    command: ["attesta.tools.demo_submit"]
+    environment:
+      ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
+      GATEWAY_HOST: gateway
+      SCORER_KEY_PATH: /run/attesta/scorer-dev-1.key
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - ../../config:/config:ro
+      - ./.runtime/scorer-dev-1.key:/run/attesta/scorer-dev-1.key:ro
+    tmpfs: ["/tmp"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 96m
+
+volumes:
+  gateway-data:
+  server-data:
+  agent-data:
+  agent-socket:
