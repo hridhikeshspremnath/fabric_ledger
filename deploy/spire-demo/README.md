@@ -67,6 +67,24 @@ Therefore:
 - Demo scorer key lives in `.runtime/` (gitignored, mode 644 for the demo only).
 - Always use `--no-deps` (the scripts do) so the running agent is never recreated.
 
-## Out of scope
+## Fabric backend, trained detector, dashboard
 
-FabricBackend (stub only), real scorer, dashboard UI.
+Fabric network and bridges: see `network/README.md` (steps 3-9). Then, with `.env`
+copied from `.env.example` and the two optional paths set:
+
+    scripts/score.sh pypi six 1.16.0   # score + sign + submit; prints tx id and block
+    scripts/dashboard-up.sh            # http://127.0.0.1:3000/trust-ledger
+    scripts/agent-reset.sh             # after a Docker/PC restart: bring everything back
+
+- `ATTESTA_DL_DIR` (attesta_DL checkout): the scoring services use the trained CNN
+  (`docker-compose.dl.yml`, image `attesta-spire-scorer-dl:local`) instead of the
+  heuristic stand-in. Only code, configs, the `m2_noshort` checkpoint and the name
+  index are mounted, read-only.
+- `ATTESTA_DASHBOARD_DIR` (dashboard checkout): the dashboard runs as
+  `spiffe://attesta.example.org/dashboard` (uid 1007) and reads the ledger through the
+  gateway over mTLS (`docker-compose.dashboard.yml`). Published on localhost only.
+- The scorer key in `.runtime/` must be the one registered on-chain by
+  `network/scripts/05-seed.sh`. On-chain keys cannot be replaced, so a mismatch shows
+  up as `422 ledger rejected the record`.
+- After a restart the agent cannot rejoin (one-time join token, 1 h SVID, 24 h CA).
+  `scripts/agent-reset.sh` drops only the agent's cache and restarts the workloads.

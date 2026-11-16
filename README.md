@@ -25,8 +25,13 @@ join tokens, private keys, SVID private-key material, or runtime databases.
 
 ## Project status
 
-Hyperledger Fabric integration, custom attestation APIs, Merkle proofs, and
-CI/CD policy enforcement are future implementation milestones.
+Working end to end in the local demo: scoring service (trained detector or heuristic
+stand-in) -> gateway (SPIFFE mTLS) -> Go bridge -> Hyperledger Fabric chaincode
+(two orgs endorse) -> dashboard. See `network/README.md`, `docs/SCORING.md` and
+`deploy/spire-demo/README.md`.
+
+Not built yet: runner attestation (so ALLOW is downgraded to REVIEW), OPA policy,
+LLM review, a deploy gate, and a third Fabric org.
 
 ## Gateway and tests
 

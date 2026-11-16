@@ -35,6 +35,13 @@ extractor_factory: my_pkg.labels:build_extractors  # (settings) -> LabelExtracto
 and `extract(bundle) -> ExtractorResult(flags, hits)`. A flag is set when the extractor labels it **or** its
 aux head is at least `aux_threshold_permille`. The built-in heuristic model/extractors are stand-ins.
 
+### The trained detector (attesta_DL)
+`attesta_DL/src/infer/attesta_adapter.py` provides both factories for the trained CNN
+(`m2_noshort` by default; `model_path` picks another checkpoint directory). The service puts the
+downloaded archive and package identity on the bundle (`bundle.data`, `.ecosystem`, `.package`,
+`.version`), so the adapter runs the same preprocessing as training. In the SPIRE demo, set
+`ATTESTA_DL_DIR` in `deploy/spire-demo/.env`; `scripts/score.sh` and `scorer-up.sh` then use it.
+
 ## Commands (WSL2, `export DOCKER_CONFIG=~/.docker-nocreds` if your credential helper is missing)
 ```bash
 # tests (no network, no containers)

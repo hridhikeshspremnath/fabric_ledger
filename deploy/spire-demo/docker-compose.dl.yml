@@ -1,0 +1,24 @@
+# Overlay: run the scoring services with the trained detector (attesta_DL) instead of
+# the heuristic stand-in. scripts/lib.sh applies it when ATTESTA_DL_DIR is set in .env.
+# Only code, configs, one checkpoint and the package-name index are mounted, read-only.
+# The training data (real malware) is never mounted.
+x-detector: &detector
+  image: attesta-spire-scorer-dl:local
+  build: ./scorer-dl
+  mem_limit: 1g
+  environment:
+    PYTHONPATH: /opt/attesta_dl
+    ATTESTA_SCORING_MODEL_FACTORY: src.infer.attesta_adapter:build_model
+    ATTESTA_SCORING_EXTRACTOR_FACTORY: src.infer.attesta_adapter:build_extractors
+    ATTESTA_SCORING_MODEL_PATH: /opt/attesta_dl/checkpoints/m2_noshort
+  volumes:
+    - "${ATTESTA_DL_DIR}/src:/opt/attesta_dl/src:ro"
+    - "${ATTESTA_DL_DIR}/configs:/opt/attesta_dl/configs:ro"
+    - "${ATTESTA_DL_DIR}/checkpoints/m2_noshort:/opt/attesta_dl/checkpoints/m2_noshort:ro"
+    - "${ATTESTA_DL_DIR}/data/cache/name_refs.json:/opt/attesta_dl/data/cache/name_refs.json:ro"
+
+services:
+  scorer:
+    <<: *detector
+  scorer-cli:
+    <<: *detector

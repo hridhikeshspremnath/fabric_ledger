@@ -1,0 +1,28 @@
+# Overlay: the dashboard as its own SPIFFE workload (read-only ledger view).
+# scripts/lib.sh applies it when ATTESTA_DASHBOARD_DIR (the dashboard checkout) is set
+# in .env. Start with scripts/dashboard-up.sh. Published on localhost only.
+services:
+  dashboard:
+    build: "${ATTESTA_DASHBOARD_DIR}"
+    image: attesta-dashboard:local
+    profiles: ["dashboard"]
+    user: "${DASHBOARD_UID:-1007}"
+    pid: "service:spire-agent"
+    environment:
+      ATTESTA_GATEWAY_URL: https://gateway:8443
+      ATTESTA_SVID_DIR: /tmp/svid
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+    tmpfs: ["/tmp", "/app/.next/cache"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 512m
+    restart: unless-stopped
+    healthcheck:
+      # Healthy only when a ledger read works end to end (dashboard -> gateway -> ledger).
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/ledger').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 8s
+      retries: 12

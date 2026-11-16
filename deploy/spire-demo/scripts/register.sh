@@ -15,3 +15,5 @@ register "$GATEWAY_ID" "$GATEWAY_UID"
 register "$FABRIC_BRIDGE_ID" "$FABRIC_BRIDGE_UID"
 register "$AUDITOR_BRIDGE_ID" "$AUDITOR_BRIDGE_UID"
 register "$AUDITOR_ID" "$AUDITOR_UID"
+# Defaults keep an older .env (without the dashboard entries) working.
+register "${DASHBOARD_ID:-spiffe://attesta.example.org/dashboard}" "${DASHBOARD_UID:-1007}"

@@ -34,6 +34,12 @@ class SourceBundle:
     total_entries: int = 0
     scanned_bytes: int = 0
     truncated: bool = False
+    # Filled in by the service so a model adapter can run its own (training-time)
+    # preprocessing on the exact archive that was downloaded.
+    data: bytes = b""
+    ecosystem: str = ""
+    package: str = ""
+    version: str = ""
 
     @property
     def scanned_files(self) -> int:

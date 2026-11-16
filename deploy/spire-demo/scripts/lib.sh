@@ -14,7 +14,14 @@ load_env() {
     set -a; . "$f"; set +a
 }
 
-dc() { docker compose --project-directory "$DEMO_DIR" "$@"; }
+dc() {
+    local files=(-f "$DEMO_DIR/docker-compose.yml")
+    # Trained detector overlay (see docker-compose.dl.yml) when ATTESTA_DL_DIR is set.
+    [[ -n "${ATTESTA_DL_DIR:-}" ]] && files+=(-f "$DEMO_DIR/docker-compose.dl.yml")
+    # Dashboard overlay (see docker-compose.dashboard.yml) when ATTESTA_DASHBOARD_DIR is set.
+    [[ -n "${ATTESTA_DASHBOARD_DIR:-}" ]] && files+=(-f "$DEMO_DIR/docker-compose.dashboard.yml")
+    docker compose --project-directory "$DEMO_DIR" "${files[@]}" "$@"
+}
 
 spire_server() { dc exec -T spire-server "$SERVER_BIN" "$@"; }
 

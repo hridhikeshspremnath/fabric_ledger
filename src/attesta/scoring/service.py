@@ -81,6 +81,8 @@ class ScoringService:
         with self._slots:
             artifact = fetch_artifact(self._fetcher, target, self._s.max_download_bytes)
             bundle = read_archive(artifact.data, artifact.filename, self._limits)
+            bundle.data, bundle.ecosystem = artifact.data, target.ecosystem
+            bundle.package, bundle.version = target.package, target.version
             extracted = self._extractors.extract(bundle)
             output = self._model.predict(bundle)
             result = self._sign_and_submit(target, artifact, bundle, extracted, output, run_hint, dry_run)
