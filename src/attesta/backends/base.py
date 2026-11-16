@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional, Protocol
 
-from attesta.backends.models import AnyCheckpoint, LedgerEntry, ListPage, Proof
+from attesta.backends.models import AnyCheckpoint, ArtifactVerdict, LedgerEntry, ListPage, Proof
 from attesta.records.trust_record import TrustRecord
 
 
@@ -37,3 +37,5 @@ class LedgerBackend(Protocol):
     def proof(self, record_id: str) -> Proof: ...
 
     def checkpoint(self) -> AnyCheckpoint: ...
+
+    def verify_artifact(self, digest: str) -> ArtifactVerdict: ...

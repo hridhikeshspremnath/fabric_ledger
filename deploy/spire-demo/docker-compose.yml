@@ -192,6 +192,26 @@ services:
     cap_drop: ["ALL"]
     mem_limit: 96m
 
+  # Deploy gate: asks the ledger (through the gateway) whether an artifact digest may
+  # deploy. Runs as the CI runner identity (uid 1001): read-only, holds no keys.
+  # Run: scripts/deploy-gate.sh sha256:<hex>
+  deploy-gate:
+    image: attesta-spire-gateway:local
+    profiles: ["gate"]
+    user: "1001"
+    pid: "service:spire-agent"
+    command: ["attesta.tools.deploy_gate"]
+    environment:
+      ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
+      GATEWAY_HOST: gateway
+    volumes:
+      - agent-socket:/run/spire/sockets:ro
+      - ../../config:/config:ro
+    tmpfs: ["/tmp"]
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 96m
+
   # Scoring service: runs as the scoring-service identity (uid 1002), downloads
   # packages (never installs them), signs TrustRecords and submits to the gateway.
   # HTTP API for CI on 127.0.0.1:8080 (put TLS in front for anything beyond localhost).

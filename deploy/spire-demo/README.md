@@ -75,6 +75,12 @@ copied from `.env.example` and the two optional paths set:
     scripts/score.sh pypi six 1.16.0   # score + sign + submit; prints tx id and block
     scripts/dashboard-up.sh            # http://127.0.0.1:3000/trust-ledger
     scripts/agent-reset.sh             # after a Docker/PC restart: bring everything back
+    scripts/deploy-gate.sh sha256:<hex>   # exit 0 only if the ledger says this artifact may deploy
+
+- Deploy gate (`attesta.tools.deploy_gate`): passes only when the latest effective
+  decision for that exact digest is ALLOW (or one named in `--allow`) and no record for
+  it is BLOCK. Unknown artifacts are refused. Exit 1 = refused, 2 = could not verify.
+  It reads through the gateway (`GET /artifacts/{digest}`) as the CI runner identity.
 
 - `ATTESTA_DL_DIR` (attesta_DL checkout): the scoring services use the trained CNN
   (`docker-compose.dl.yml`, image `attesta-spire-scorer-dl:local`) instead of the

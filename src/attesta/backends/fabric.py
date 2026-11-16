@@ -12,7 +12,8 @@ from urllib.parse import quote
 
 from attesta.backends.base import (
     DuplicateRecordError, LedgerRejectedError, LedgerUnavailableError, RecordNotFoundError)
-from attesta.backends.models import FabricCheckpoint, FabricProof, LedgerEntry, ListPage
+from attesta.backends.models import (
+    ArtifactVerdict, FabricCheckpoint, FabricProof, LedgerEntry, ListPage)
 from attesta.records.trust_record import TrustRecord
 
 
@@ -92,3 +93,8 @@ class FabricBackend:
         body = self._call("GET", "/v1/checkpoint")
         assert body is not None
         return FabricCheckpoint(**body)
+
+    def verify_artifact(self, digest: str) -> ArtifactVerdict:
+        body = self._call("GET", f"/v1/artifacts/{quote(digest, safe='')}")
+        assert body is not None
+        return ArtifactVerdict(**body)

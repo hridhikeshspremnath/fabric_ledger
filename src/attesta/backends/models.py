@@ -70,6 +70,19 @@ class FabricCheckpoint(BaseModel):
     previous_block_hash: str
 
 
+class ArtifactVerdict(BaseModel):
+    """Every decision recorded for one artifact digest (what a deploy gate asks for).
+
+    Same shape as the chaincode's VerifyArtifact: `records` items carry record_id,
+    effective_decision, tx_time and tx_id.
+    """
+    artifact_digest: str
+    found: bool
+    latest_record_id: Optional[str] = None
+    latest_effective_decision: Optional[str] = None
+    records: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class ChainResult(BaseModel):
     valid: bool
     records_checked: int

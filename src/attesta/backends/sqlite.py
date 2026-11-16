@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Optional
 
 from attesta.backends.base import DuplicateRecordError, LedgerEmptyError, RecordNotFoundError
-from attesta.backends.models import ChainResult, Checkpoint, InclusionProof, LedgerEntry, ListPage
+from attesta.backends.models import (
+    ArtifactVerdict, ChainResult, Checkpoint, InclusionProof, LedgerEntry, ListPage)
 from attesta.ledger.checkpoints import CheckpointSigner, sign_checkpoint
 from attesta.ledger.merkle import build_merkle_tree, generate_proof, get_merkle_root, hash_leaf
 from attesta.records.canonical import canonical_bytes, sha256_hex
@@ -150,3 +151,16 @@ class SqliteBackend:
         rows = self._all_rows()
         root = get_merkle_root(self._tree(rows))
         return sign_checkpoint(len(rows), root, int(time.time()), self._signer)
+
+    def verify_artifact(self, digest: str) -> ArtifactVerdict:
+        """Dev equivalent of the chaincode's VerifyArtifact. SQLite has no auditor
+        overrides, so the effective decision is the recorded one."""
+        records = [{"record_id": e.record.record_id, "effective_decision": e.record.decision.value,
+                    "tx_time": e.timestamp, "tx_id": ""}
+                   for e in map(self._to_entry, self._all_rows())
+                   if e.record.artifact_digest == digest]
+        latest = records[-1] if records else {}
+        return ArtifactVerdict(
+            artifact_digest=digest, found=bool(records), records=records,
+            latest_record_id=latest.get("record_id"),
+            latest_effective_decision=latest.get("effective_decision"))

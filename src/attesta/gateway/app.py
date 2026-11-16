@@ -3,18 +3,18 @@ valid in-trust-domain client (enforced by the TLS layer plus `require_peer`)."""
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 
 from attesta.backends.base import (
     DuplicateRecordError, LedgerBackend, LedgerEmptyError, LedgerRejectedError,
     LedgerUnavailableError, RecordNotFoundError)
-from attesta.backends.models import AnyCheckpoint, LedgerEntry, Proof
+from attesta.backends.models import AnyCheckpoint, ArtifactVerdict, LedgerEntry, Proof
 from attesta.gateway.identity import PeerIdentity, get_peer_identity
 from attesta.gateway.settings import GatewaySettings
 from attesta.gateway.writer import SingleWriter
 from attesta.policy.engine import PolicyConfig, evaluate
 from attesta.records.signing import KeyRegistry, SignatureRejected, verify_record_signature
-from attesta.records.trust_record import TrustRecord
+from attesta.records.trust_record import SHA256_RE, TrustRecord
 
 
 def create_app(settings: GatewaySettings, backend: LedgerBackend,
@@ -98,6 +98,15 @@ def create_app(settings: GatewaySettings, backend: LedgerBackend,
             return backend.proof(record_id)
         except (RecordNotFoundError, LedgerEmptyError) as exc:
             raise HTTPException(status_code=404, detail="record not found") from exc
+        except LedgerUnavailableError as exc:
+            raise HTTPException(status_code=503, detail="ledger unavailable") from exc
+
+    @app.get("/artifacts/{digest}", response_model=ArtifactVerdict)
+    def verify_artifact(digest: str = Path(pattern=SHA256_RE),
+                        _: PeerIdentity = Depends(require_peer)) -> ArtifactVerdict:
+        """Every decision recorded for an artifact digest (used by the deploy gate)."""
+        try:
+            return backend.verify_artifact(digest)
         except LedgerUnavailableError as exc:
             raise HTTPException(status_code=503, detail="ledger unavailable") from exc
 
