@@ -1,4 +1,6 @@
 """Composition root: build a ScoringService from settings."""
+from urllib.parse import urlsplit
+
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
@@ -41,6 +43,9 @@ def build_service(settings: ScoringSettings, dry_run_only: bool = False) -> Scor
         extractors=load_factory(settings.extractor_factory, settings),
         policy=load_policy(settings.policy_path),
         signer=signer,
-        attestation=build_attestation(settings),
+        # Separate fetcher: only the OIDC key fetch may reach GitHub; package downloads may not.
+        attestation=build_attestation(settings, UrllibFetcher(
+            hosts=frozenset({urlsplit(settings.attestation_jwks_url).hostname or ""}),
+            timeout=settings.fetch_timeout_seconds)),
         submitter=None if dry_run_only else build_gateway_submitter(settings),
         floor=opa_floor(settings.opa_url) if settings.opa_url else None)

@@ -21,8 +21,17 @@ CI (GitHub-hosted runner)                 your host (SPIRE + gateway)
 - **Key hygiene.** The scorer key path must be outside any git work tree (`allow_key_in_repo` is a dev escape).
 - **Identity.** At startup the service checks its own SVID is `.../scoring-service`; the gateway also
   checks `caller_cert_sha256` against the mTLS certificate (one retry covers SVID rotation).
-- **Runner attestation.** Not verified yet (`attestation_mode: none`), so the policy downgrades
-  ALLOW/WARN to REVIEW. GitHub OIDC verification is the next step for this input.
+- **Runner attestation.** `attestation_mode: none` (default) leaves records unattested, so the policy
+  downgrades ALLOW/WARN to REVIEW. `attestation_mode: github-oidc` verifies the CI job's GitHub OIDC
+  token (header `X-Attesta-OIDC`): RS256 signature against GitHub's published keys (algorithm pinned),
+  issuer, audience (`attestation_audience`, default `attesta`), expiry, and `repository` on the
+  `attestation_repos` allow-list (comma-separated `owner/name`). Only then is the record attested, with
+  `node_attestor=github-oidc`, `runner_class` from the token's `runner_environment`, and
+  `attestation_digest` = hash of the verified run claims (no actor or email). A bad or expired token is a
+  401, not a silent downgrade; no token means unattested. The CI action requests the token itself when
+  the job has `permissions: id-token: write`. Limits: the gateway and chaincode trust the scorer's signed
+  `attestation_verified` flag, they do not see the token; and this proves which repository's workflow
+  ran, not that its code is trustworthy.
 
 ## Plugging in the exported model
 Set in `config/scoring.yaml`:

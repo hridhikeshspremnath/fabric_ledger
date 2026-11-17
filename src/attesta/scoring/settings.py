@@ -40,8 +40,14 @@ class ScoringSettings(BaseModel):
     # Record metadata
     runner_class: str = "scoring-service"
     node_attestor: str = "join_token"
-    attestation_mode: str = "none"  # none | static (dev only)
+    attestation_mode: str = "none"  # none | static (dev only) | github-oidc
     attestation_digest: Optional[str] = None
+    # github-oidc: repositories ("owner/name", comma-separated) whose workflows may attest,
+    # and the audience the CI job must request for its token.
+    attestation_repos: str = ""
+    attestation_audience: str = "attesta"
+    attestation_issuer: str = "https://token.actions.githubusercontent.com"
+    attestation_jwks_url: str = "https://token.actions.githubusercontent.com/.well-known/jwks"
 
     # Download / archive limits (all in-memory; nothing is installed or executed)
     max_download_bytes: int = 50 * 1024 * 1024

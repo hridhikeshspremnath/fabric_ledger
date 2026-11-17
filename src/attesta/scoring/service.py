@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional
 from attesta.policy.engine import PolicyConfig
 from attesta.policy.opa import Floor
 from attesta.records.trust_record import TrustRecord
-from attesta.scoring.attestation import AttestationProvider
+from attesta.scoring.attestation import Attestation, AttestationProvider
 from attesta.scoring.builder import BuildContext, build_record
 from attesta.scoring.errors import SubmitError
 from attesta.scoring.fetch import Fetcher
@@ -65,8 +65,10 @@ class ScoringService:
         self._cache: dict[tuple[str, ...], tuple[float, ScoreResult]] = {}
         self._lock = threading.Lock()
 
-    def _cache_key(self, label: str) -> tuple[str, ...]:
-        return (label, self._ctx.model_version_hash, self._ctx.policy.policy_version)
+    def _cache_key(self, label: str, attestation: Attestation) -> tuple[str, ...]:
+        # An attested result must never be served to an unattested caller, or the reverse.
+        return (label, self._ctx.model_version_hash, self._ctx.policy.policy_version,
+                attestation.digest or "")
 
     def _cached(self, key: tuple[str, ...]) -> Optional[ScoreResult]:
         with self._lock:
@@ -76,9 +78,10 @@ class ScoringService:
         return None
 
     def score(self, ecosystem: str, package: str, version: str, run_hint: str = "",
-              dry_run: bool = False) -> ScoreResult:
+              dry_run: bool = False, attestation_token: Optional[str] = None) -> ScoreResult:
         target = validate_target(ecosystem, package, version)
-        key = self._cache_key(target.label())
+        attestation = self._attestation.get(attestation_token)  # raises AttestationRejected
+        key = self._cache_key(target.label(), attestation)
         if not dry_run and (hit := self._cached(key)):
             return hit
         with self._slots:
@@ -88,14 +91,14 @@ class ScoringService:
             bundle.package, bundle.version = target.package, target.version
             extracted = self._extractors.extract(bundle)
             output = self._model.predict(bundle)
-            result = self._sign_and_submit(target, artifact, bundle, extracted, output, run_hint, dry_run)
+            result = self._sign_and_submit(target, artifact, bundle, extracted, output, run_hint,
+                                           dry_run, attestation)
         if not dry_run:
             with self._lock:
                 self._cache[key] = (self._clock(), result)
         return result
 
-    def _sign_and_submit(self, target, artifact, bundle, extracted, output, run_hint, dry_run):  # type: ignore[no-untyped-def]
-        attestation = self._attestation.get()
+    def _sign_and_submit(self, target, artifact, bundle, extracted, output, run_hint, dry_run, attestation):  # type: ignore[no-untyped-def]
         if dry_run or self._submitter is None:
             record = build_record(self._ctx, target, artifact, bundle, extracted, output,
                                   attestation, DRY_RUN_CERT, run_hint)

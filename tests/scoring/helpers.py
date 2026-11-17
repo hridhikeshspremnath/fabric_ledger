@@ -65,7 +65,7 @@ class FixedAttestation:
     def __init__(self, verified: bool = True) -> None:
         self.verified = verified
 
-    def get(self) -> Attestation:
+    def get(self, credential=None) -> Attestation:
         return Attestation(self.verified, "sha256:" + "ee" * 32 if self.verified else None)
 
 

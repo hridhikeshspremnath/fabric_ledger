@@ -21,6 +21,12 @@ inputs:
   include-dev:
     description: Scan npm devDependencies too (true or false).
     default: "true"
+  oidc-audience:
+    description: >-
+      Audience of the GitHub OIDC token sent as runner attestation. The job needs
+      "permissions: id-token: write"; without it the run is scored as unattested (REVIEW at best).
+      Empty disables it.
+    default: attesta
   max-deps:
     description: Maximum number of dependencies to scan.
     default: "300"
@@ -37,10 +43,11 @@ runs:
         IN_ON_ERROR: ${{ inputs.on-error }}
         IN_INCLUDE_DEV: ${{ inputs.include-dev }}
         IN_MAX_DEPS: ${{ inputs.max-deps }}
+        IN_OIDC_AUDIENCE: ${{ inputs.oidc-audience }}
         PYTHONPATH: ${{ github.action_path }}/../../../src
       run: |
         # Inputs travel through env vars, never interpolated into the script text.
         dev_flag="--include-dev"; [ "$IN_INCLUDE_DEV" = "true" ] || dev_flag="--no-include-dev"
         # shellcheck disable=SC2086
         python3 -m attesta.ci.scan --api-url "$IN_API_URL" --paths $IN_PATHS \
-          --fail-on "$IN_FAIL_ON" --on-error "$IN_ON_ERROR" "$dev_flag" --max-deps "$IN_MAX_DEPS"
+          --fail-on "$IN_FAIL_ON" --on-error "$IN_ON_ERROR" "$dev_flag" --max-deps "$IN_MAX_DEPS" --oidc-audience "$IN_OIDC_AUDIENCE"

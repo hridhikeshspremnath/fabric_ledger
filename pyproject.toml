@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.6",
     "pyyaml>=6",
     "cryptography>=42",
+    "PyJWT[crypto]>=2.8",
     "fastapi>=0.110",
     "uvicorn>=0.30",
     "spiffe>=0.2",

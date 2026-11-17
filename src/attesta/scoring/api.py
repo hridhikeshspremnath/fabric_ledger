@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from attesta.scoring.errors import (
-    ArchiveError, ConfigError, FetchError, InvalidTarget, SubmitError)
+    ArchiveError, AttestationRejected, ConfigError, FetchError, InvalidTarget, SubmitError)
 from attesta.scoring.service import ScoringService
 
 
@@ -33,10 +33,14 @@ def create_api(service: ScoringService, token: str) -> FastAPI:
         return {"status": "ok"}
 
     @app.post("/v1/score", dependencies=[Depends(require_token)])
-    def score(req: ScoreRequest) -> dict[str, Any]:
+    def score(req: ScoreRequest, x_attesta_oidc: str = Header(default="")) -> dict[str, Any]:
+        """`X-Attesta-OIDC`: the CI job's GitHub OIDC token. Optional; absent = unattested."""
         try:
             result = service.score(req.ecosystem, req.package, req.version,
-                                   run_hint=req.run_id, dry_run=req.dry_run)
+                                   run_hint=req.run_id, dry_run=req.dry_run,
+                                   attestation_token=x_attesta_oidc or None)
+        except AttestationRejected as exc:
+            raise HTTPException(status_code=401, detail=str(exc)) from exc
         except InvalidTarget as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except (FetchError, ArchiveError, SubmitError) as exc:

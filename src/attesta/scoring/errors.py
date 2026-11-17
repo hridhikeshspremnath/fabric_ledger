@@ -18,5 +18,9 @@ class ConfigError(ScoringError):
     """Misconfiguration (model factory, key location, ...)."""
 
 
+class AttestationRejected(ScoringError):
+    """The runner attestation credential was present but not acceptable."""
+
+
 class SubmitError(ScoringError):
     """The gateway refused or could not be reached."""

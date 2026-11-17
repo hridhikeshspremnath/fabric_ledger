@@ -12,6 +12,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -35,13 +36,31 @@ def annotate(level: str, title: str, message: str) -> None:
     print(f"::{level} title={gh_escape(title)}::{gh_escape(message)}")
 
 
+def fetch_oidc_token(audience: str, timeout: float = 15.0) -> str:
+    """This job's GitHub OIDC token for `audience`, or "" when the job did not grant
+    `permissions: id-token: write` (the scorer then treats the run as unattested)."""
+    url, bearer = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", ""), os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+    if not url or not bearer:
+        return ""
+    request = urllib.request.Request(
+        url + ("&" if "?" in url else "?") + "audience=" + urllib.parse.quote(audience),
+        headers={"Authorization": f"Bearer {bearer}"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return str(json.loads(response.read()).get("value", ""))
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        return ""  # fall back to unattested rather than failing the scan
+
+
 def score_dep(api_url: str, token: str, dep: Dep, run_id: str, timeout: float,
-              retries: int = 2) -> dict[str, Any]:
+              retries: int = 2, oidc_audience: str = "") -> dict[str, Any]:
     body = json.dumps({"ecosystem": dep.ecosystem, "package": dep.name,
                        "version": dep.version, "run_id": run_id}).encode()
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+    if oidc_audience and (oidc := fetch_oidc_token(oidc_audience)):  # fresh per dependency: tokens are short-lived
+        headers["X-Attesta-OIDC"] = oidc
     request = urllib.request.Request(
-        api_url.rstrip("/") + "/v1/score", data=body, method="POST",
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"})
+        api_url.rstrip("/") + "/v1/score", data=body, method="POST", headers=headers)
     last = "unknown error"
     for attempt in range(retries + 1):
         try:
@@ -122,7 +141,8 @@ def run(args: argparse.Namespace) -> int:
 
     run_id = os.environ.get("GITHUB_RUN_ID", "ci")
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = [(dep, pool.submit(score_dep, args.api_url, token, dep, run_id, args.timeout))
+        futures = [(dep, pool.submit(score_dep, args.api_url, token, dep, run_id, args.timeout,
+                                     oidc_audience=args.oidc_audience))
                    for dep in deps]
     rows: list[tuple[Dep, Optional[dict[str, Any]], str]] = []
     worst, errors = 0, 0
@@ -158,6 +178,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--max-deps", type=int, default=300)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument("--oidc-audience", default="attesta",
+                        help="audience for the GitHub OIDC token sent as runner attestation; "
+                             "empty disables it")
     return parser.parse_args(argv)
 
 

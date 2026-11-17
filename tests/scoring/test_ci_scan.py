@@ -63,7 +63,7 @@ def project(tmp_path, monkeypatch):
 
 
 def fake_scores(decisions):
-    def score(api_url, token, dep, run_id, timeout, retries=2):
+    def score(api_url, token, dep, run_id, timeout, retries=2, oidc_audience=""):
         decision = decisions.get(dep.name, "ALLOW")
         if decision == "ERROR":
             raise scan.ScanError("HTTP 502: boom")
