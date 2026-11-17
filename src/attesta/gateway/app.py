@@ -12,6 +12,7 @@ from attesta.backends.models import AnyCheckpoint, ArtifactVerdict, LedgerEntry,
 from attesta.gateway.identity import PeerIdentity, get_peer_identity
 from attesta.gateway.settings import GatewaySettings
 from attesta.gateway.writer import SingleWriter
+from attesta.policy.decision import DECISION_FIELDS, verify_decision
 from attesta.policy.engine import PolicyConfig, evaluate
 from attesta.policy.opa import EVIDENCE, Floor, OpaUnavailable
 from attesta.records.signing import KeyRegistry, SignatureRejected, verify_record_signature
@@ -20,7 +21,8 @@ from attesta.records.trust_record import SHA256_RE, Decision, TrustRecord
 
 def create_app(settings: GatewaySettings, backend: LedgerBackend,
                registry: KeyRegistry, policy: PolicyConfig,
-               floor: Optional[Floor] = None) -> FastAPI:
+               floor: Optional[Floor] = None, decision_keys: Optional[KeyRegistry] = None,
+               bundle: Optional[str] = None) -> FastAPI:
     writer = SingleWriter(backend, settings.queue_maxsize)
     trust_prefix = f"spiffe://{settings.trust_domain}/"
 
@@ -54,6 +56,16 @@ def create_app(settings: GatewaySettings, backend: LedgerBackend,
     def check_policy(record: TrustRecord) -> None:
         if record.policy_version != policy.policy_version:
             raise HTTPException(status_code=422, detail="policy_version mismatch")
+        if decision_keys is not None:  # signed decisions are required: made by the approved policy bundle
+            if record.policy_bundle_hash != bundle:
+                raise HTTPException(status_code=422, detail="policy_bundle_hash is not this gateway's policy bundle")
+            if not record.decision_key_id or not record.decision_signature:
+                raise HTTPException(status_code=403, detail="decision signature required")
+            try:
+                verify_decision({k: getattr(record, k) for k in DECISION_FIELDS}, record.decision_key_id,
+                                record.decision_signature, decision_keys)
+            except SignatureRejected as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
         decision_floor = Decision.ALLOW
         if floor is not None:
             try:

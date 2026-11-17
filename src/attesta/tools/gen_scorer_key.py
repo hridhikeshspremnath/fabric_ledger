@@ -13,7 +13,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
-def generate(out_dir: Path, key_id: str, days: int, key_mode: int) -> None:
+def generate(out_dir: Path, key_id: str, days: int, key_mode: int,
+             registry_name: str = "scorer_keys.yaml") -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     key = Ed25519PrivateKey.generate()
     private_path = out_dir / f"{key_id}.key"
@@ -31,7 +32,7 @@ def generate(out_dir: Path, key_id: str, days: int, key_mode: int) -> None:
         "not_after": (now + timedelta(days=days)).isoformat(),
         "revoked": False,
     }]}
-    (out_dir / "scorer_keys.yaml").write_text(yaml.safe_dump(registry, sort_keys=False))
+    (out_dir / registry_name).write_text(yaml.safe_dump(registry, sort_keys=False))
 
 
 def main() -> None:
@@ -40,9 +41,11 @@ def main() -> None:
     parser.add_argument("--key-id", default="scorer-dev-1")
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--key-mode", default="600", help="octal file mode for the private key")
+    parser.add_argument("--registry-name", default="scorer_keys.yaml",
+                        help="public registry file name (use decision_keys.yaml for a policy decision key)")
     args = parser.parse_args()
-    generate(args.out_dir, args.key_id, args.days, int(args.key_mode, 8))
-    print(f"wrote {args.out_dir}/{args.key_id}.key and scorer_keys.yaml")
+    generate(args.out_dir, args.key_id, args.days, int(args.key_mode, 8), args.registry_name)
+    print(f"wrote {args.out_dir}/{args.key_id}.key and {args.registry_name}")
 
 
 if __name__ == "__main__":

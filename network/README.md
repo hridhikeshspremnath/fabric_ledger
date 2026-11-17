@@ -19,6 +19,7 @@ Run everything from WSL2 inside the Linux filesystem (not /mnt/c).
 | 8 | `deploy/spire-demo/scripts/bridge-up.sh` then `gateway-fabric.sh` | Fabric network up |
 | 9 | `deploy/spire-demo/scripts/demo-submit.sh` | prints tx id and block number |
 | 10 | `deploy/spire-demo/scripts/auditor-override.sh <record_id> BLOCK "<reason>"` | auditor bridge up |
+| 11 | `network/scripts/09-decision-policy.sh` | policy key in `deploy/spire-demo/.runtime` (made by `gateway-up.sh`) |
 | down | `deploy/spire-demo/scripts/down.sh` and `network/scripts/07-down.sh [--purge]` | |
 
 ## Trust boundaries
@@ -46,3 +47,14 @@ Run everything from WSL2 inside the Linux filesystem (not /mnt/c).
   ("no combination of peers can satisfy the endorsement policy").
 - Recreating the network (`07-down.sh --purge`, then steps 01-05) wipes the ledger. Take a copy of
   `/api/ledger` first if you want to keep the records.
+
+## Signed policy decisions
+A separate policy service (`attesta.policy.service`, own key, `policy` container) computes each decision
+(score bands + OPA floors) and signs it over the evidence, the record and artifact ids, the decision and
+the policy bundle hash (`config/policy.yaml` + `config/policy.rego`). Step 09 registers its public key and
+activates a policy version that pins that bundle hash. From then on the chaincode refuses a record unless
+`policy_bundle_hash` is the approved one and `decision_signature` verifies against an active registered
+policy key (the scorer key cannot stand in). Tested by sending a correctly scorer-signed record straight to
+the chaincode: refused. Changing either policy file means a new `policy_version` and another run of step 09
+(`SetPolicy` is endorsed by two orgs). Limits: the policy service signs whatever evidence it is given, so a
+compromised scorer can still lie about evidence; and records written before step 09 are unsigned.

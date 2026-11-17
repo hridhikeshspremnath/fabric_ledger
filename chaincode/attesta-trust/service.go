@@ -157,6 +157,43 @@ func (s *Service) scorerKey(id string) (*ScorerKey, error) {
 	return &key, nil
 }
 
+func (s *Service) decisionKey(id string) (*ScorerKey, error) {
+	kr := &keyer{st: s.st}
+	k := kr.key("dkey", id)
+	if kr.err != nil {
+		return nil, kr.err
+	}
+	var key ScorerKey
+	ok, err := s.loadJSON(k, &key)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("unknown policy key: %s", id)
+	}
+	return &key, nil
+}
+
+// checkDecisionSignature enforces a pinned policy bundle: the record must say it was decided under
+// the approved bundle and carry a valid signature from an active, registered policy key.
+func (s *Service) checkDecisionSignature(m map[string]any, pol *Policy, txTime int64) error {
+	if str(m, "policy_bundle_hash") != pol.BundleHash {
+		return fmt.Errorf("policy_bundle_hash is not the approved bundle %s", pol.BundleHash)
+	}
+	id := str(m, "decision_key_id")
+	if id == "" || str(m, "decision_signature") == "" {
+		return errors.New("a signed policy decision is required")
+	}
+	key, err := s.decisionKey(id)
+	if err != nil {
+		return err
+	}
+	if err := key.ActiveAt(txTime); err != nil {
+		return fmt.Errorf("policy key: %w", err)
+	}
+	return VerifyDecisionSignature(m, key.PublicKey)
+}
+
 func (s *Service) meta(recordID string) (*Meta, error) {
 	kr := &keyer{st: s.st}
 	k := kr.key("meta", recordID)
@@ -219,6 +256,11 @@ func (s *Service) RecordDecision(recordJSON string) (string, error) {
 	}
 	if err := VerifyScorerSignature(rec.M, key.PublicKey); err != nil {
 		return "", err
+	}
+	if pol.BundleHash != "" {
+		if err := s.checkDecisionSignature(rec.M, pol, txTime); err != nil {
+			return "", err
+		}
 	}
 	band, decision, err := pol.Evaluate(rec.RiskScore, rec.AttestationVerified)
 	if err != nil {
@@ -555,6 +597,43 @@ func (s *Service) RegisterScorerKey(keyJSON string) error {
 		return fmt.Errorf("scorer key already registered: %s", key.KeyID)
 	}
 	return s.saveJSON(k, key)
+}
+
+// RegisterDecisionKey adds a policy-service public key (immutable except by a new key id).
+func (s *Service) RegisterDecisionKey(keyJSON string) error {
+	if err := s.requireAdmin(); err != nil {
+		return err
+	}
+	var key ScorerKey
+	if err := json.Unmarshal([]byte(keyJSON), &key); err != nil {
+		return fmt.Errorf("invalid key JSON: %w", err)
+	}
+	key.Revoked = false
+	if err := key.Validate(); err != nil {
+		return err
+	}
+	kr := &keyer{st: s.st}
+	k := kr.key("dkey", key.KeyID)
+	if kr.err != nil {
+		return kr.err
+	}
+	if dup, err := s.exists(k); err != nil || dup {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("policy key already registered: %s", key.KeyID)
+	}
+	return s.saveJSON(k, key)
+}
+
+// GetDecisionKey returns a policy key registry entry.
+func (s *Service) GetDecisionKey(keyID string) (string, error) {
+	key, err := s.decisionKey(keyID)
+	if err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(key)
+	return string(raw), err
 }
 
 // RevokeScorerKey marks a key revoked; it stays in the registry for audit.

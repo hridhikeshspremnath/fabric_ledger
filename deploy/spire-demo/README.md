@@ -98,6 +98,11 @@ copied from `.env.example` and the two optional paths set:
 - `ATTESTA_DASHBOARD_DIR` (dashboard checkout): the dashboard runs as
   `spiffe://attesta.example.org/dashboard` (uid 1007) and reads the ledger through the
   gateway over mTLS (`docker-compose.dashboard.yml`). Published on localhost only.
+- Signed policy decisions: the `policy` service signs each decision with `.runtime/decision-dev-1.key`
+  (created by `gateway-up.sh`); the scorer asks it for the decision, the gateway verifies the signature
+  and bundle hash, and the chaincode enforces both once `network/scripts/09-decision-policy.sh` has
+  pinned the bundle. If the policy service is down, scoring fails (no unsigned fallback). Set
+  `ATTESTA_POLICY_SERVICE_URL=` (empty) to score without it.
 - Dashboard sign-in: `scripts/dashboard-up.sh` creates the session secret and an `admin` user on first run
   (generated password in `.runtime/dashboard_users.json.admin.password`, mode 600; all of `.runtime/` is
   gitignored). Add or reset users with `scripts/dashboard-user.sh <name> [password]`. Passwords are scrypt

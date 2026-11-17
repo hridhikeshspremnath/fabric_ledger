@@ -1,20 +1,72 @@
 {
  "description": "Shared Python/Go vectors: canonical JSON, signing payload, Ed25519 signature. Inputs are JSON text; both sides parse numbers as integers and reject floats.",
  "canonical_cases": [
-  {"name": "key_order", "input": "{\"b\": 1, \"a\": 2}", "canonical": "{\"a\":2,\"b\":1}", "sha256": "d3626ac30a87e6f7a6428233b3c68299976865fa5508e4267c5415c76af7a772"},
-  {"name": "nested", "input": "{\"z\": {\"y\": [3, 2, 1], \"x\": null}, \"a\": true}", "canonical": "{\"a\":true,\"z\":{\"x\":null,\"y\":[3,2,1]}}", "sha256": "4dab6fd72ff8e185f7ae5eab80835755543d7f75f951cdfb5c190013ebc782b1"},
-  {"name": "ints", "input": "{\"neg\": -5, \"zero\": 0, \"big\": 9007199254740993}", "canonical": "{\"big\":9007199254740993,\"neg\":-5,\"zero\":0}", "sha256": "42a3a551d6b16a4f3507c65a19b445c3cae9e5c539167395c70a850afe99f9bc"},
-  {"name": "escapes", "input": "{\"s\": \"q\\\"b\\\\ n\\n t\\t \\u0001 /\"}", "canonical": "{\"s\":\"q\\\"b\\\\ n\\n t\\t \\u0001 /\"}", "sha256": "a1cc0241517aec8ef49c78c702d584a798b975b6f02b309bee0f1467d2b0b8d8"},
-  {"name": "non_ascii_raw", "input": "{\"s\": \"café 😀\"}", "canonical": "{\"s\":\"caf\\u00e9 \\ud83d\\ude00\"}", "sha256": "7f81fdd1134394a84495e3764ca3dafab8f4ffc7945d54c5c9889e5ba8511e1f"},
-  {"name": "non_ascii_escaped", "input": "{\"s\": \"caf\\u00e9 \\ud83d\\ude00\"}", "canonical": "{\"s\":\"caf\\u00e9 \\ud83d\\ude00\"}", "sha256": "7f81fdd1134394a84495e3764ca3dafab8f4ffc7945d54c5c9889e5ba8511e1f"},
-  {"name": "empty", "input": "{\"e\": \"\", \"l\": [], \"o\": {}}", "canonical": "{\"e\":\"\",\"l\":[],\"o\":{}}", "sha256": "9bd6b5eab09ae04581b8f4aebf3b6e9c3fe684282a1709579beb676e58fa7bcf"},
-  {"name": "neg_zero_normalised", "input": "{\"n\":-0}", "canonical": "{\"n\":0}", "sha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"}
+  {
+   "name": "key_order",
+   "input": "{\"b\": 1, \"a\": 2}",
+   "canonical": "{\"a\":2,\"b\":1}",
+   "sha256": "d3626ac30a87e6f7a6428233b3c68299976865fa5508e4267c5415c76af7a772"
+  },
+  {
+   "name": "nested",
+   "input": "{\"z\": {\"y\": [3, 2, 1], \"x\": null}, \"a\": true}",
+   "canonical": "{\"a\":true,\"z\":{\"x\":null,\"y\":[3,2,1]}}",
+   "sha256": "4dab6fd72ff8e185f7ae5eab80835755543d7f75f951cdfb5c190013ebc782b1"
+  },
+  {
+   "name": "ints",
+   "input": "{\"neg\": -5, \"zero\": 0, \"big\": 9007199254740993}",
+   "canonical": "{\"big\":9007199254740993,\"neg\":-5,\"zero\":0}",
+   "sha256": "42a3a551d6b16a4f3507c65a19b445c3cae9e5c539167395c70a850afe99f9bc"
+  },
+  {
+   "name": "escapes",
+   "input": "{\"s\": \"q\\\"b\\\\ n\\n t\\t \\u0001 /\"}",
+   "canonical": "{\"s\":\"q\\\"b\\\\ n\\n t\\t \\u0001 /\"}",
+   "sha256": "a1cc0241517aec8ef49c78c702d584a798b975b6f02b309bee0f1467d2b0b8d8"
+  },
+  {
+   "name": "non_ascii_raw",
+   "input": "{\"s\": \"café 😀\"}",
+   "canonical": "{\"s\":\"caf\\u00e9 \\ud83d\\ude00\"}",
+   "sha256": "7f81fdd1134394a84495e3764ca3dafab8f4ffc7945d54c5c9889e5ba8511e1f"
+  },
+  {
+   "name": "non_ascii_escaped",
+   "input": "{\"s\": \"caf\\u00e9 \\ud83d\\ude00\"}",
+   "canonical": "{\"s\":\"caf\\u00e9 \\ud83d\\ude00\"}",
+   "sha256": "7f81fdd1134394a84495e3764ca3dafab8f4ffc7945d54c5c9889e5ba8511e1f"
+  },
+  {
+   "name": "empty",
+   "input": "{\"e\": \"\", \"l\": [], \"o\": {}}",
+   "canonical": "{\"e\":\"\",\"l\":[],\"o\":{}}",
+   "sha256": "9bd6b5eab09ae04581b8f4aebf3b6e9c3fe684282a1709579beb676e58fa7bcf"
+  },
+  {
+   "name": "neg_zero_normalised",
+   "input": "{\"n\":-0}",
+   "canonical": "{\"n\":0}",
+   "sha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"
+  }
  ],
  "canonical_rejects": [
-  {"name": "float_fraction", "input": "{\"x\":1.5}"},
-  {"name": "float_zero_frac", "input": "{\"x\":1.0}"},
-  {"name": "float_exponent", "input": "{\"x\":1e3}"},
-  {"name": "nested_float", "input": "{\"a\":[{\"b\":0.1}]}"}
+  {
+   "name": "float_fraction",
+   "input": "{\"x\":1.5}"
+  },
+  {
+   "name": "float_zero_frac",
+   "input": "{\"x\":1.0}"
+  },
+  {
+   "name": "float_exponent",
+   "input": "{\"x\":1e3}"
+  },
+  {
+   "name": "nested_float",
+   "input": "{\"a\":[{\"b\":0.1}]}"
+  }
  ],
  "signing": {
   "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
@@ -48,15 +100,83 @@
    "decision": "ALLOW",
    "evidence_hash": "sha256:ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e",
    "scorer_key_id": "k1",
-   "scorer_signature": "zOe5Y2QAOzZdU1EO5hODBMFucSU66IAlDy0G/6xFCvZJf0pjyQCWpEsLHMCiWGgo0eLGjmFQOLJkczRE9BY7Cw=="
+   "scorer_signature": "e+/4nlKq7zTXfyCDTnLFRaWMyhZp4GU5fX4QTyvNhCZCy+rgCtIn1M3nmW7EPe4FoWLOMG+CRU43Vcx78vE2Ag==",
+   "policy_bundle_hash": null,
+   "decision_key_id": null,
+   "decision_signature": null
   },
-  "signing_payload": "{\"artifact_digest\":\"sha256:c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c\",\"attestation_digest\":\"sha256:f745a15153c4dacf0ea4bbf57265e73283941f8335939b33c693975315cf5916\",\"attestation_verified\":true,\"caller_cert_sha256\":\"abababababababababababababababababababababababababababababababab\",\"decision\":\"ALLOW\",\"ecosystem\":\"pypi\",\"evidence_hash\":\"sha256:ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e\",\"flag_cred_access\":false,\"flag_install_exec\":false,\"flag_network\":true,\"flag_obfuscation\":false,\"flag_process_spawn\":false,\"llm_evidence_hash\":\"sha256:487b91042c7cf27a19e23ea8699f5f354b1a0c3af9e418138dc6150d830f970d\",\"llm_verdict\":\"BENIGN\",\"model_version_hash\":\"sha256:9372c470eeadd5ecd9c3c74c2b3cb633f8e2f2fad799250a0f70d652b6b825e4\",\"node_attestor\":\"join_token\",\"package\":\"example-package\",\"policy_version\":\"p1\",\"record_id\":\"11111111-1111-4111-8111-111111111111\",\"risk_band\":\"LOW\",\"risk_score\":120,\"run_id\":\"run-0001\",\"runner_class\":\"gha-hosted\",\"schema_version\":1,\"scorer_key_id\":\"k1\",\"submitted_by_spiffe_id\":\"spiffe://attesta.example.org/scoring-service\",\"version\":\"1.0.0\"}",
-  "canonical_record": "{\"artifact_digest\":\"sha256:c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c\",\"attestation_digest\":\"sha256:f745a15153c4dacf0ea4bbf57265e73283941f8335939b33c693975315cf5916\",\"attestation_verified\":true,\"caller_cert_sha256\":\"abababababababababababababababababababababababababababababababab\",\"decision\":\"ALLOW\",\"ecosystem\":\"pypi\",\"evidence_hash\":\"sha256:ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e\",\"flag_cred_access\":false,\"flag_install_exec\":false,\"flag_network\":true,\"flag_obfuscation\":false,\"flag_process_spawn\":false,\"llm_evidence_hash\":\"sha256:487b91042c7cf27a19e23ea8699f5f354b1a0c3af9e418138dc6150d830f970d\",\"llm_verdict\":\"BENIGN\",\"model_version_hash\":\"sha256:9372c470eeadd5ecd9c3c74c2b3cb633f8e2f2fad799250a0f70d652b6b825e4\",\"node_attestor\":\"join_token\",\"package\":\"example-package\",\"policy_version\":\"p1\",\"record_id\":\"11111111-1111-4111-8111-111111111111\",\"risk_band\":\"LOW\",\"risk_score\":120,\"run_id\":\"run-0001\",\"runner_class\":\"gha-hosted\",\"schema_version\":1,\"scorer_key_id\":\"k1\",\"scorer_signature\":\"zOe5Y2QAOzZdU1EO5hODBMFucSU66IAlDy0G/6xFCvZJf0pjyQCWpEsLHMCiWGgo0eLGjmFQOLJkczRE9BY7Cw==\",\"submitted_by_spiffe_id\":\"spiffe://attesta.example.org/scoring-service\",\"version\":\"1.0.0\"}",
-  "canonical_record_sha256": "81743db5a44c350b50ac6cd461db8daed80a2ce7a5a2825db1b22a133aa5a477",
+  "signing_payload": "{\"artifact_digest\":\"sha256:c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c\",\"attestation_digest\":\"sha256:f745a15153c4dacf0ea4bbf57265e73283941f8335939b33c693975315cf5916\",\"attestation_verified\":true,\"caller_cert_sha256\":\"abababababababababababababababababababababababababababababababab\",\"decision\":\"ALLOW\",\"decision_key_id\":null,\"decision_signature\":null,\"ecosystem\":\"pypi\",\"evidence_hash\":\"sha256:ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e\",\"flag_cred_access\":false,\"flag_install_exec\":false,\"flag_network\":true,\"flag_obfuscation\":false,\"flag_process_spawn\":false,\"llm_evidence_hash\":\"sha256:487b91042c7cf27a19e23ea8699f5f354b1a0c3af9e418138dc6150d830f970d\",\"llm_verdict\":\"BENIGN\",\"model_version_hash\":\"sha256:9372c470eeadd5ecd9c3c74c2b3cb633f8e2f2fad799250a0f70d652b6b825e4\",\"node_attestor\":\"join_token\",\"package\":\"example-package\",\"policy_bundle_hash\":null,\"policy_version\":\"p1\",\"record_id\":\"11111111-1111-4111-8111-111111111111\",\"risk_band\":\"LOW\",\"risk_score\":120,\"run_id\":\"run-0001\",\"runner_class\":\"gha-hosted\",\"schema_version\":1,\"scorer_key_id\":\"k1\",\"submitted_by_spiffe_id\":\"spiffe://attesta.example.org/scoring-service\",\"version\":\"1.0.0\"}",
+  "canonical_record": "{\"artifact_digest\":\"sha256:c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c\",\"attestation_digest\":\"sha256:f745a15153c4dacf0ea4bbf57265e73283941f8335939b33c693975315cf5916\",\"attestation_verified\":true,\"caller_cert_sha256\":\"abababababababababababababababababababababababababababababababab\",\"decision\":\"ALLOW\",\"decision_key_id\":null,\"decision_signature\":null,\"ecosystem\":\"pypi\",\"evidence_hash\":\"sha256:ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e\",\"flag_cred_access\":false,\"flag_install_exec\":false,\"flag_network\":true,\"flag_obfuscation\":false,\"flag_process_spawn\":false,\"llm_evidence_hash\":\"sha256:487b91042c7cf27a19e23ea8699f5f354b1a0c3af9e418138dc6150d830f970d\",\"llm_verdict\":\"BENIGN\",\"model_version_hash\":\"sha256:9372c470eeadd5ecd9c3c74c2b3cb633f8e2f2fad799250a0f70d652b6b825e4\",\"node_attestor\":\"join_token\",\"package\":\"example-package\",\"policy_bundle_hash\":null,\"policy_version\":\"p1\",\"record_id\":\"11111111-1111-4111-8111-111111111111\",\"risk_band\":\"LOW\",\"risk_score\":120,\"run_id\":\"run-0001\",\"runner_class\":\"gha-hosted\",\"schema_version\":1,\"scorer_key_id\":\"k1\",\"scorer_signature\":\"e+/4nlKq7zTXfyCDTnLFRaWMyhZp4GU5fX4QTyvNhCZCy+rgCtIn1M3nmW7EPe4FoWLOMG+CRU43Vcx78vE2Ag==\",\"submitted_by_spiffe_id\":\"spiffe://attesta.example.org/scoring-service\",\"version\":\"1.0.0\"}",
+  "canonical_record_sha256": "e9bbca1cac25388b5fdd2903a5cfbe32f9cceeccfb5a0475a5e3498e89eb5cc1",
   "tamper_cases": [
-   {"name": "package_changed", "set": {"package": "evil"}},
-   {"name": "score_changed", "set": {"risk_score": 121}},
-   {"name": "decision_changed", "set": {"decision": "BLOCK"}}
+   {
+    "name": "package_changed",
+    "set": {
+     "package": "evil"
+    }
+   },
+   {
+    "name": "score_changed",
+    "set": {
+     "risk_score": 121
+    }
+   },
+   {
+    "name": "decision_changed",
+    "set": {
+     "decision": "BLOCK"
+    }
+   }
+  ]
+ },
+ "decision": {
+  "description": "Policy decision signature: fields -> canonical payload -> Ed25519 (Python signs, Go verifies).",
+  "seed_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+  "public_key_b64": "Kay64UG8yvCyLhqU000LxzYeUm0L/hLIl5S8kyKWbdc=",
+  "key_id": "decision-vector-1",
+  "fields": {
+   "record_id": "11111111-1111-4111-8111-111111111111",
+   "artifact_digest": "sha256:c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c",
+   "policy_version": "p1",
+   "risk_score": 120,
+   "risk_band": "LOW",
+   "attestation_verified": true,
+   "flag_install_exec": false,
+   "flag_network": true,
+   "flag_obfuscation": false,
+   "flag_cred_access": false,
+   "flag_process_spawn": false,
+   "llm_verdict": "BENIGN",
+   "decision": "ALLOW",
+   "policy_bundle_hash": "sha256:abababababababababababababababababababababababababababababababab"
+  },
+  "payload": "{\"artifact_digest\":\"sha256:c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c\",\"attestation_verified\":true,\"decision\":\"ALLOW\",\"flag_cred_access\":false,\"flag_install_exec\":false,\"flag_network\":true,\"flag_obfuscation\":false,\"flag_process_spawn\":false,\"llm_verdict\":\"BENIGN\",\"policy_bundle_hash\":\"sha256:abababababababababababababababababababababababababababababababab\",\"policy_version\":\"p1\",\"record_id\":\"11111111-1111-4111-8111-111111111111\",\"risk_band\":\"LOW\",\"risk_score\":120}",
+  "signature_b64": "KhPeOo5j/PoIYCWFxZ555qhDl5mW0SROf+LFhKit04X1WtqimR3GMww7dV2IU0luiUxgxzcRwCkV+Ax2LoV8CA==",
+  "tamper_cases": [
+   {
+    "name": "decision flipped",
+    "set": {
+     "decision": "BLOCK"
+    }
+   },
+   {
+    "name": "other bundle",
+    "set": {
+     "policy_bundle_hash": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    }
+   },
+   {
+    "name": "other artifact",
+    "set": {
+     "artifact_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+    }
+   },
+   {
+    "name": "flag changed",
+    "set": {
+     "flag_network": false
+    }
+   }
   ]
  }
 }

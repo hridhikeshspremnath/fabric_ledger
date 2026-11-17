@@ -78,6 +78,34 @@ services:
       timeout: 5s
       retries: 12
 
+  # Policy service: computes and SIGNS each decision (bands + OPA floors) with a key the scorer does
+  # not hold. The chaincode pins the policy bundle and checks the signature (network/scripts/09).
+  # Plain HTTP on the compose network only. Started by gateway-up.sh, which creates the key in
+  # .runtime (gitignored; mode 644 for the demo, use a KMS/HSM later).
+  policy:
+    image: attesta-spire-gateway:local
+    profiles: ["gateway"]
+    user: "1009"
+    command: ["attesta.policy.service"]
+    environment:
+      ATTESTA_POLICY_PATH: /config/policy.yaml
+      ATTESTA_POLICY_REGO_PATH: /config/policy.rego
+      ATTESTA_DECISION_KEY_PATH: /run/attesta/decision-dev-1.key
+      ATTESTA_DECISION_KEY_ID: decision-dev-1
+      ATTESTA_OPA_URL: http://opa:8181
+    volumes:
+      - ../../config:/config:ro
+      - ./.runtime/decision-dev-1.key:/run/attesta/decision-dev-1.key:ro
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 128m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8182/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   # Attesta gateway (mTLS, SPIFFE ID spiffe://attesta.example.org/gateway, uid 1003).
   # Start with scripts/gateway-up.sh (uses --no-deps so the agent is untouched).
   gateway:
@@ -92,11 +120,13 @@ services:
       ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
       ATTESTA_BACKEND: ${ATTESTA_BACKEND:-sqlite}
       ATTESTA_OPA_URL: ${ATTESTA_OPA_URL-http://opa:8181}
+      ATTESTA_DECISION_KEYS_PATH: /run/attesta/decision_keys.yaml
     volumes:
       - agent-socket:/run/spire/sockets:ro
       - gateway-data:/data
       - ../../config:/config:ro
       - ./.runtime/scorer_keys.yaml:/run/attesta/scorer_keys.yaml:ro
+      - ./.runtime/decision_keys.yaml:/run/attesta/decision_keys.yaml:ro
     tmpfs: ["/tmp"]
     read_only: true
     cap_drop: ["ALL"]
@@ -249,6 +279,7 @@ services:
       ATTESTA_SCORING_SCORER_KEY_PATH: /run/attesta/scorer-dev-1.key
       ATTESTA_SCORING_ALLOW_KEY_IN_REPO: "false"
       ATTESTA_SCORING_OPA_URL: ${ATTESTA_OPA_URL-http://opa:8181}
+      ATTESTA_SCORING_POLICY_SERVICE_URL: ${ATTESTA_POLICY_SERVICE_URL-http://policy:8182}
     ports:
       - "127.0.0.1:8080:8080"
     volumes:

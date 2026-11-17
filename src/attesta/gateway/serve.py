@@ -1,6 +1,7 @@
 """Gateway entry point: `python -m attesta.gateway.serve` (mTLS via the SPIRE agent)."""
 import asyncio
 import logging
+from pathlib import Path
 
 import uvicorn
 
@@ -11,6 +12,7 @@ from attesta.gateway.settings import GatewaySettings, load_settings
 from attesta.gateway.svid import SvidSource, create_svid_source
 from attesta.gateway.tls import build_server_context, reload_context
 from attesta.policy.engine import load_policy
+from attesta.policy.decision import bundle_hash
 from attesta.policy.opa import opa_floor
 from attesta.records.signing import KeyRegistry
 
@@ -37,7 +39,9 @@ async def run(settings: GatewaySettings) -> None:
     backend = create_backend(settings, provider)
     app = create_app(settings, backend, KeyRegistry.load(settings.scorer_keys_path),
                      load_policy(settings.policy_path),
-                     floor=opa_floor(settings.opa_url) if settings.opa_url else None)
+                     floor=opa_floor(settings.opa_url) if settings.opa_url else None,
+                     decision_keys=KeyRegistry.load(Path(settings.decision_keys_path)) if settings.decision_keys_path else None,
+                     bundle=bundle_hash(settings.policy_path, settings.policy_rego_path) if settings.decision_keys_path else None)
 
     config = uvicorn.Config(
         app, host=settings.listen_host, port=settings.listen_port,

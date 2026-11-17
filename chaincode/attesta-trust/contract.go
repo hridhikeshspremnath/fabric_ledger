@@ -40,6 +40,14 @@ func (c *Contract) RegisterScorerKey(ctx contractapi.TransactionContextInterface
 	return svc(ctx).RegisterScorerKey(keyJSON)
 }
 
+func (c *Contract) RegisterDecisionKey(ctx contractapi.TransactionContextInterface, keyJSON string) error {
+	return svc(ctx).RegisterDecisionKey(keyJSON)
+}
+
+func (c *Contract) GetDecisionKey(ctx contractapi.TransactionContextInterface, keyID string) (string, error) {
+	return svc(ctx).GetDecisionKey(keyID)
+}
+
 func (c *Contract) RevokeScorerKey(ctx contractapi.TransactionContextInterface, keyID string) error {
 	return svc(ctx).RevokeScorerKey(keyID)
 }

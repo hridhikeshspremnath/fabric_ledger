@@ -8,6 +8,7 @@ from attesta.backends.bridge_client import SpiffeBridgeClient
 from attesta.gateway.identity import identity_from_der
 from attesta.gateway.svid import create_svid_source
 from attesta.policy.engine import load_policy
+from attesta.policy.decision import remote_decide
 from attesta.policy.opa import opa_floor
 from attesta.scoring.attestation import build_attestation
 from attesta.scoring.errors import ConfigError
@@ -50,5 +51,6 @@ def build_service(settings: ScoringSettings, dry_run_only: bool = False) -> Scor
             timeout=settings.fetch_timeout_seconds)),
         submitter=None if dry_run_only else build_gateway_submitter(settings),
         floor=opa_floor(settings.opa_url) if settings.opa_url else None,
+        decide=remote_decide(settings.policy_service_url) if settings.policy_service_url else None,
         reviewer=build_reviewer(settings.llm_model, settings.llm_api_key_path,
                                 settings.llm_timeout_seconds))

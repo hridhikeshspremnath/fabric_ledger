@@ -1,6 +1,6 @@
 # PLACEHOLDER bands (permille, 0-1000) until calibrated. Contiguous, covering 0..1000.
 # attestation_verified=false downgrades ALLOW/WARN to REVIEW (see attesta.policy.engine).
-policy_version: placeholder-0
+policy_version: bundle-1
 bands:
   - {name: LOW,      min_score: 0,   max_score: 399,  decision: ALLOW}
   - {name: MEDIUM,   min_score: 400, max_score: 699,  decision: WARN}

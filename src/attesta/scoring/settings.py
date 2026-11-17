@@ -35,6 +35,8 @@ class ScoringSettings(BaseModel):
     llm_api_key_path: Path = Path("/run/attesta/llm_api_key")
     llm_min_permille: int = 300
     llm_timeout_seconds: float = 60.0
+    # Policy decision service (signs decisions, see attesta.policy.service). Empty = decide locally, unsigned.
+    policy_service_url: str = ""
     opa_url: str = ""  # OPA server for evidence floors (config/policy.rego); empty = bands only
 
     # Pluggable model and label extractors ("package.module:callable")

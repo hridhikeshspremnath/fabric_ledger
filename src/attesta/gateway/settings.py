@@ -16,6 +16,10 @@ class GatewaySettings(BaseModel):
     checkpoint_key_dir: Path = Path("/data/checkpoint_keys")
     scorer_keys_path: Path = Path("/run/attesta/scorer_keys.yaml")
     policy_path: Path = Path("/config/policy.yaml")
+    # Signed decisions: public keys of the policy service and the Rego file that, with policy_path,
+    # forms the policy bundle. Empty decision_keys_path = decisions are not required to be signed.
+    decision_keys_path: str = ""
+    policy_rego_path: Path = Path("/config/policy.rego")
     opa_url: str = ""  # OPA server for evidence floors (config/policy.rego); empty = bands only
     listen_host: str = "0.0.0.0"
     listen_port: int = 8443

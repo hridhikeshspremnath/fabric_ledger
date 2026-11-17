@@ -81,6 +81,11 @@ class TrustRecord(BaseModel):
     attestation_verified: StrictBool
     attestation_digest: Optional[Sha256] = None
     decision: Decision
+    # Signed policy decision (see attesta.policy.decision). Optional so records written before
+    # decision signing stay valid; the chaincode requires them once the active policy pins a bundle.
+    policy_bundle_hash: Optional[Sha256] = None
+    decision_key_id: Optional[Ident] = None
+    decision_signature: Optional[Signature] = None
     evidence_hash: Sha256
     scorer_key_id: Ident
     scorer_signature: Signature

@@ -19,6 +19,9 @@ type Policy struct {
 	PolicyVersion   string `json:"policy_version"`
 	AllowedScorerID string `json:"allowed_scorer_spiffe_id"`
 	Bands           []Band `json:"bands"`
+	// BundleHash pins the policy bundle (bands + Rego rules) that may make decisions. When set,
+	// records must carry a decision signed by a registered policy key over exactly this bundle.
+	BundleHash string `json:"bundle_hash,omitempty"`
 }
 
 // decisionRank orders decisions from least to most strict.
@@ -31,6 +34,9 @@ func (p Policy) Validate() error {
 	}
 	if !reSpiffe.MatchString(p.AllowedScorerID) {
 		return errors.New("invalid allowed_scorer_spiffe_id")
+	}
+	if p.BundleHash != "" && !reSHA256.MatchString(p.BundleHash) {
+		return errors.New("invalid bundle_hash")
 	}
 	bands := append([]Band(nil), p.Bands...)
 	sort.Slice(bands, func(i, j int) bool { return bands[i].MinScore < bands[j].MinScore })

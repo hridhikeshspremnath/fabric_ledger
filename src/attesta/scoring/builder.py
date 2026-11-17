@@ -2,7 +2,7 @@
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from attesta.policy.engine import PolicyConfig, evaluate
 from attesta.policy.opa import Floor
@@ -54,6 +54,7 @@ class BuildContext:
     node_attestor: str
     aux_threshold: int
     floor: Optional[Floor] = None  # OPA evidence floor; None = bands only
+    decide: Optional[Callable[[dict[str, Any]], dict[str, Any]]] = None  # signed-decision service; None = local
 
 
 def build_record(ctx: BuildContext, target: Target, artifact: Artifact, bundle: SourceBundle,
@@ -61,24 +62,37 @@ def build_record(ctx: BuildContext, target: Target, artifact: Artifact, bundle: 
                  cert_sha256: str, run_hint: str = "", review: Optional[Review] = None) -> TrustRecord:
     flags = combine_flags(extracted, output, ctx.aux_threshold)
     verdict = review.verdict.value if review else "NOT_RUN"
-    floor = Decision.ALLOW
-    if ctx.floor is not None:  # raises OpaUnavailable: never score without the rules
-        floor = ctx.floor({**flags, "llm_verdict": verdict})
-    result = evaluate(ctx.policy, output.risk_permille, attestation.verified, floor)
+    record_id = str(uuid.uuid4())
+    signed: dict[str, Any] = {}
+    if ctx.decide is not None:  # the policy service decides and signs; raises PolicyUnavailable
+        signed = ctx.decide({
+            "record_id": record_id, "artifact_digest": "sha256:" + artifact.sha256_hex,
+            "risk_score": output.risk_permille, "attestation_verified": attestation.verified,
+            "llm_verdict": verdict, **flags})
+        decision_value, band_value, version = signed["decision"], signed["risk_band"], signed["policy_version"]
+    else:
+        floor = Decision.ALLOW
+        if ctx.floor is not None:  # raises OpaUnavailable: never score without the rules
+            floor = ctx.floor({**flags, "llm_verdict": verdict})
+        result = evaluate(ctx.policy, output.risk_permille, attestation.verified, floor)
+        decision_value, band_value, version = result.decision.value, result.band.value, result.policy_version
     fields: dict[str, Any] = {
-        "record_id": str(uuid.uuid4()), "run_id": make_run_id(run_hint),
+        "record_id": record_id, "run_id": make_run_id(run_hint),
         "submitted_by_spiffe_id": ctx.scoring_spiffe_id, "caller_cert_sha256": cert_sha256,
         "ecosystem": target.ecosystem, "package": target.package, "version": target.version,
         "artifact_digest": "sha256:" + artifact.sha256_hex,
-        "risk_score": output.risk_permille, "risk_band": result.band.value,
+        "risk_score": output.risk_permille, "risk_band": band_value,
         **flags,
         "llm_verdict": verdict, "llm_evidence_hash": review.evidence_hash if review else None,
-        "model_version_hash": ctx.model_version_hash, "policy_version": result.policy_version,
+        "model_version_hash": ctx.model_version_hash, "policy_version": version,
         "runner_class": attestation.runner_class or ctx.runner_class,
         "node_attestor": attestation.node_attestor or ctx.node_attestor,
         "attestation_verified": attestation.verified,
         "attestation_digest": attestation.digest if attestation.verified else None,
-        "decision": result.decision.value,
+        "decision": decision_value,
+        "policy_bundle_hash": signed.get("policy_bundle_hash"),
+        "decision_key_id": signed.get("decision_key_id"),
+        "decision_signature": signed.get("decision_signature"),
         "evidence_hash": evidence_hash(target, artifact, bundle, extracted, output),
     }
     return ctx.signer.sign(fields)

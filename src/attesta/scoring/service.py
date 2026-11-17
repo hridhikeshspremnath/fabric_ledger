@@ -50,7 +50,8 @@ class ScoringService:
                  extractors: LabelExtractor, policy: PolicyConfig, signer: ScorerSigner,
                  attestation: AttestationProvider, submitter: Optional[Submitter],
                  clock: Callable[[], float] = time.monotonic,
-                 floor: Optional[Floor] = None, reviewer: Optional[Any] = None) -> None:
+                 floor: Optional[Floor] = None, reviewer: Optional[Any] = None,
+                 decide: Optional[Callable[[dict[str, Any]], dict[str, Any]]] = None) -> None:
         self._reviewer = reviewer  # GeminiReviewer or None (review off)
         self._s, self._fetcher = settings, fetcher
         self._model, self._extractors = model, extractors
@@ -59,7 +60,7 @@ class ScoringService:
             policy=policy, signer=signer, scoring_spiffe_id=settings.scoring_spiffe_id,
             model_version_hash=model.version_hash, runner_class=settings.runner_class,
             node_attestor=settings.node_attestor, aux_threshold=settings.aux_threshold_permille,
-            floor=floor)
+            floor=floor, decide=decide)
         self._limits = Limits(settings.max_files, settings.max_file_bytes,
                               settings.max_scanned_bytes, settings.max_uncompressed_bytes)
         self._slots = threading.BoundedSemaphore(settings.max_concurrent)
