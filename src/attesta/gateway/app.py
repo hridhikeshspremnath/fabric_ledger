@@ -1,7 +1,7 @@
 """FastAPI gateway. Only the scoring-service identity may write; reads need any
 valid in-trust-domain client (enforced by the TLS layer plus `require_peer`)."""
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 
@@ -12,7 +12,7 @@ from attesta.backends.models import AnyCheckpoint, ArtifactVerdict, LedgerEntry,
 from attesta.gateway.identity import PeerIdentity, get_peer_identity
 from attesta.gateway.settings import GatewaySettings
 from attesta.gateway.writer import SingleWriter
-from attesta.policy.decision import DECISION_FIELDS, verify_decision
+from attesta.policy.decision import DECISION_FIELDS, bundle_hash, verify_decision
 from attesta.policy.engine import PolicyConfig, evaluate
 from attesta.policy.opa import EVIDENCE, Floor, OpaUnavailable
 from attesta.records.signing import KeyRegistry, SignatureRejected, verify_record_signature
@@ -120,6 +120,31 @@ def create_app(settings: GatewaySettings, backend: LedgerBackend,
             raise HTTPException(status_code=404, detail="record not found") from exc
         except LedgerUnavailableError as exc:
             raise HTTPException(status_code=503, detail="ledger unavailable") from exc
+
+    @app.get("/policy")
+    def get_policy(_: PeerIdentity = Depends(require_peer)) -> dict[str, Any]:
+        """What this gateway enforces, and (Fabric backend) what the chain has approved."""
+        rego = settings.policy_rego_path
+        has_rego = rego.is_file() and settings.policy_path.is_file()
+        local = {
+            "policy_version": policy.policy_version,
+            "bands": [{"name": b.name.value, "min_score": b.min_score, "max_score": b.max_score,
+                       "decision": b.decision.value} for b in policy.bands],
+            "bundle_hash": bundle_hash(settings.policy_path, rego) if has_rego else None,
+            "rego": rego.read_text(encoding="utf-8") if has_rego else None,
+            "signed_decisions_required": decision_keys is not None,
+            "allowed_scorer_spiffe_id": settings.allowed_scorer_id,
+        }
+        onchain: Optional[dict[str, Any]] = None
+        fetch = getattr(backend, "active_policy", None)
+        if fetch is not None:
+            try:
+                onchain = fetch()
+            except (LedgerUnavailableError, RecordNotFoundError):
+                onchain = None
+        pinned = (onchain or {}).get("bundle_hash")
+        return {"local": local, "onchain": onchain,
+                "matches": bool(pinned) and pinned == local["bundle_hash"] and onchain.get("policy_version") == policy.policy_version}
 
     @app.get("/artifacts/{digest}", response_model=ArtifactVerdict)
     def verify_artifact(digest: str = Path(pattern=SHA256_RE),

@@ -47,6 +47,7 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /v1/artifacts/{digest}", a.getArtifact)
 	mux.HandleFunc("GET /v1/status/{decision}", a.listByStatus)
 	mux.HandleFunc("GET /v1/packages", a.listByPackage)
+	mux.HandleFunc("GET /v1/policy", a.getPolicy)
 	switch a.Role {
 	case "gateway":
 		mux.HandleFunc("POST /v1/records", a.postRecord)
@@ -243,6 +244,16 @@ func (a *API) getArtifact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	raw, err := a.L.Evaluate("VerifyArtifact", digest)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeRaw(w, http.StatusOK, raw)
+}
+
+// getPolicy returns the active on-chain policy (bands, allowed scorer, pinned bundle hash).
+func (a *API) getPolicy(w http.ResponseWriter, _ *http.Request) {
+	raw, err := a.L.Evaluate("GetPolicy", "")
 	if err != nil {
 		writeError(w, err)
 		return

@@ -94,6 +94,12 @@ class FabricBackend:
         assert body is not None
         return FabricCheckpoint(**body)
 
+    def active_policy(self) -> dict[str, Any]:
+        """The active on-chain policy: version, bands, allowed scorer and the pinned bundle hash."""
+        body = self._call("GET", "/v1/policy")
+        assert body is not None
+        return dict(body)
+
     def verify_artifact(self, digest: str) -> ArtifactVerdict:
         body = self._call("GET", f"/v1/artifacts/{quote(digest, safe='')}")
         assert body is not None
