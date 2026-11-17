@@ -103,6 +103,12 @@ copied from `.env.example` and the two optional paths set:
   and bundle hash, and the chaincode enforces both once `network/scripts/09-decision-policy.sh` has
   pinned the bundle. If the policy service is down, scoring fails (no unsigned fallback). Set
   `ATTESTA_POLICY_SERVICE_URL=` (empty) to score without it.
+- Workload Identity page: `scripts/identity-snapshot.sh` exports the SPIRE registration entries and agents
+  (ids, selectors, TTLs, agent SVID expiry; no keys or tokens) to `.runtime/identity/snapshot.json`, which the
+  dashboard container reads from a read-only folder mount. `--loop` refreshes it every 30 s; the page shows the
+  snapshot's age and warns when it is stale. It is a snapshot, not a live query, because the SPIRE server image
+  has no shell and its admin socket is not shared; the page cannot show workload SVID expiry (only the
+  workload itself can fetch its SVID).
 - Dashboard sign-in: `scripts/dashboard-up.sh` creates the session secret and an `admin` user on first run
   (generated password in `.runtime/dashboard_users.json.admin.password`, mode 600; all of `.runtime/` is
   gitignored). Add or reset users with `scripts/dashboard-user.sh <name> [password]`. Passwords are scrypt

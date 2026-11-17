@@ -10,6 +10,8 @@
 "$(dirname "${BASH_SOURCE[0]}")/register.sh"
 mkdir -p "$RUNTIME_DIR"
 dc --profile dashboard build dashboard
+"$(dirname "${BASH_SOURCE[0]}")/identity-snapshot.sh"   # the Workload Identity page reads this
 "$(dirname "${BASH_SOURCE[0]}")/dashboard-user.sh" --init
 dc --profile dashboard up -d --no-deps --wait dashboard
+echo "Keep the Workload Identity page fresh: scripts/identity-snapshot.sh --loop &"
 echo "Dashboard on http://127.0.0.1:3000 (sign in required)"

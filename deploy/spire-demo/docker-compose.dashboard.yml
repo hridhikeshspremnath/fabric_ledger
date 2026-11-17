@@ -13,6 +13,7 @@ services:
       ATTESTA_SVID_DIR: /tmp/svid
       ATTESTA_USERS_FILE: /run/attesta/users.json
       ATTESTA_SESSION_SECRET_FILE: /run/attesta/session_secret
+      ATTESTA_IDENTITY_FILE: /run/attesta/identity/snapshot.json
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -20,6 +21,8 @@ services:
       # Sign-in secrets as files (created by scripts/dashboard-up.sh; .runtime is gitignored).
       - ./.runtime/dashboard_users.json:/run/attesta/users.json:ro
       - ./.runtime/dashboard_session_secret:/run/attesta/session_secret:ro
+      # SPIRE snapshot (a folder, so atomic replacement is seen); written by scripts/identity-snapshot.sh.
+      - ./.runtime/identity:/run/attesta/identity:ro
     tmpfs: ["/tmp", "/app/.next/cache"]
     read_only: true
     cap_drop: ["ALL"]
