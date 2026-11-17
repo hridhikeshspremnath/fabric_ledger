@@ -11,18 +11,23 @@ services:
     environment:
       ATTESTA_GATEWAY_URL: https://gateway:8443
       ATTESTA_SVID_DIR: /tmp/svid
+      ATTESTA_USERS_FILE: /run/attesta/users.json
+      ATTESTA_SESSION_SECRET_FILE: /run/attesta/session_secret
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
       - agent-socket:/run/spire/sockets:ro
+      # Sign-in secrets as files (created by scripts/dashboard-up.sh; .runtime is gitignored).
+      - ./.runtime/dashboard_users.json:/run/attesta/users.json:ro
+      - ./.runtime/dashboard_session_secret:/run/attesta/session_secret:ro
     tmpfs: ["/tmp", "/app/.next/cache"]
     read_only: true
     cap_drop: ["ALL"]
     mem_limit: 512m
     restart: unless-stopped
     healthcheck:
-      # Healthy only when a ledger read works end to end (dashboard -> gateway -> ledger).
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/ledger').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      # Liveness only: /api/ledger now needs a session. Ledger reads are checked by signing in.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 10s
       timeout: 8s
       retries: 12

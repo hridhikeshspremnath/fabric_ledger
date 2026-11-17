@@ -98,6 +98,11 @@ copied from `.env.example` and the two optional paths set:
 - `ATTESTA_DASHBOARD_DIR` (dashboard checkout): the dashboard runs as
   `spiffe://attesta.example.org/dashboard` (uid 1007) and reads the ledger through the
   gateway over mTLS (`docker-compose.dashboard.yml`). Published on localhost only.
+- Dashboard sign-in: `scripts/dashboard-up.sh` creates the session secret and an `admin` user on first run
+  (generated password in `.runtime/dashboard_users.json.admin.password`, mode 600; all of `.runtime/` is
+  gitignored). Add or reset users with `scripts/dashboard-user.sh <name> [password]`. Passwords are scrypt
+  hashes, the session is an 8 h HMAC-signed httpOnly cookie, and 5 wrong attempts lock a user for 60 s.
+  The container's healthcheck is liveness only (`/api/health`); ledger access needs a session.
 - The scorer key in `.runtime/` must be the one registered on-chain by
   `network/scripts/05-seed.sh`. On-chain keys cannot be replaced, so a mismatch shows
   up as `422 ledger rejected the record`.
