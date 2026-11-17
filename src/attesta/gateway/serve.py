@@ -11,6 +11,7 @@ from attesta.gateway.settings import GatewaySettings, load_settings
 from attesta.gateway.svid import SvidSource, create_svid_source
 from attesta.gateway.tls import build_server_context, reload_context
 from attesta.policy.engine import load_policy
+from attesta.policy.opa import opa_floor
 from attesta.records.signing import KeyRegistry
 
 log = logging.getLogger("attesta.gateway")
@@ -35,7 +36,8 @@ async def run(settings: GatewaySettings) -> None:
 
     backend = create_backend(settings, provider)
     app = create_app(settings, backend, KeyRegistry.load(settings.scorer_keys_path),
-                     load_policy(settings.policy_path))
+                     load_policy(settings.policy_path),
+                     floor=opa_floor(settings.opa_url) if settings.opa_url else None)
 
     config = uvicorn.Config(
         app, host=settings.listen_host, port=settings.listen_port,

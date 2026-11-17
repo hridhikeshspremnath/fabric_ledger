@@ -18,5 +18,6 @@ if [[ ! -f "$RUNTIME_DIR/$KEY_ID.key" ]]; then
 fi
 
 "$(dirname "${BASH_SOURCE[0]}")/register.sh"
+dc --profile gateway up -d --no-deps --wait opa
 dc --profile gateway up -d --no-deps --wait gateway
 echo "Gateway up. Next: scripts/demo-submit.sh"

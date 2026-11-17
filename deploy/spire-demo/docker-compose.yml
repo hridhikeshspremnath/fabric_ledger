@@ -58,6 +58,26 @@ services:
     <<: *workload
     user: "1002"
 
+  # OPA: evidence floors (config/policy.rego) for the gateway and the scorer. Plain HTTP on
+  # the compose network only; it answers floor queries and holds no secrets. Started by
+  # gateway-up.sh. Set ATTESTA_OPA_URL= (empty) in .env to run on score bands alone.
+  opa:
+    image: openpolicyagent/opa:latest-static
+    profiles: ["gateway"]
+    user: "1008"
+    command: ["run", "--server", "--addr", "0.0.0.0:8181", "--log-level", "error", "/policy.rego"]
+    volumes:
+      - ../../config/policy.rego:/policy.rego:ro
+    read_only: true
+    cap_drop: ["ALL"]
+    mem_limit: 128m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opa", "eval", "-d", "/policy.rego", "data.attesta.policy.rank"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   # Attesta gateway (mTLS, SPIFFE ID spiffe://attesta.example.org/gateway, uid 1003).
   # Start with scripts/gateway-up.sh (uses --no-deps so the agent is untouched).
   gateway:
@@ -71,6 +91,7 @@ services:
     environment:
       ATTESTA_GATEWAY_CONFIG: /config/gateway.yaml
       ATTESTA_BACKEND: ${ATTESTA_BACKEND:-sqlite}
+      ATTESTA_OPA_URL: ${ATTESTA_OPA_URL-http://opa:8181}
     volumes:
       - agent-socket:/run/spire/sockets:ro
       - gateway-data:/data
@@ -227,6 +248,7 @@ services:
       ATTESTA_SCORING_API_TOKEN: ${ATTESTA_SCORING_API_TOKEN:-}
       ATTESTA_SCORING_SCORER_KEY_PATH: /run/attesta/scorer-dev-1.key
       ATTESTA_SCORING_ALLOW_KEY_IN_REPO: "false"
+      ATTESTA_SCORING_OPA_URL: ${ATTESTA_OPA_URL-http://opa:8181}
     ports:
       - "127.0.0.1:8080:8080"
     volumes:

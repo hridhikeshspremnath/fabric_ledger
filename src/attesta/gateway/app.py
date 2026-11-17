@@ -13,12 +13,14 @@ from attesta.gateway.identity import PeerIdentity, get_peer_identity
 from attesta.gateway.settings import GatewaySettings
 from attesta.gateway.writer import SingleWriter
 from attesta.policy.engine import PolicyConfig, evaluate
+from attesta.policy.opa import EVIDENCE, Floor, OpaUnavailable
 from attesta.records.signing import KeyRegistry, SignatureRejected, verify_record_signature
-from attesta.records.trust_record import SHA256_RE, TrustRecord
+from attesta.records.trust_record import SHA256_RE, Decision, TrustRecord
 
 
 def create_app(settings: GatewaySettings, backend: LedgerBackend,
-               registry: KeyRegistry, policy: PolicyConfig) -> FastAPI:
+               registry: KeyRegistry, policy: PolicyConfig,
+               floor: Optional[Floor] = None) -> FastAPI:
     writer = SingleWriter(backend, settings.queue_maxsize)
     trust_prefix = f"spiffe://{settings.trust_domain}/"
 
@@ -52,7 +54,13 @@ def create_app(settings: GatewaySettings, backend: LedgerBackend,
     def check_policy(record: TrustRecord) -> None:
         if record.policy_version != policy.policy_version:
             raise HTTPException(status_code=422, detail="policy_version mismatch")
-        expected = evaluate(policy, record.risk_score, record.attestation_verified)
+        decision_floor = Decision.ALLOW
+        if floor is not None:
+            try:
+                decision_floor = floor({k: getattr(record, k) for k in EVIDENCE})
+            except OpaUnavailable as exc:  # fail strict: no rules, no record
+                raise HTTPException(status_code=503, detail="policy engine unavailable") from exc
+        expected = evaluate(policy, record.risk_score, record.attestation_verified, decision_floor)
         if record.risk_band != expected.band or record.decision != expected.decision:
             raise HTTPException(status_code=422, detail="risk_band/decision do not match policy")
 

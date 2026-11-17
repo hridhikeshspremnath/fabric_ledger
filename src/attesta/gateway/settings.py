@@ -16,6 +16,7 @@ class GatewaySettings(BaseModel):
     checkpoint_key_dir: Path = Path("/data/checkpoint_keys")
     scorer_keys_path: Path = Path("/run/attesta/scorer_keys.yaml")
     policy_path: Path = Path("/config/policy.yaml")
+    opa_url: str = ""  # OPA server for evidence floors (config/policy.rego); empty = bands only
     listen_host: str = "0.0.0.0"
     listen_port: int = 8443
     queue_maxsize: int = 256

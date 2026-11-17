@@ -82,6 +82,15 @@ copied from `.env.example` and the two optional paths set:
   it is BLOCK. Unknown artifacts are refused. Exit 1 = refused, 2 = could not verify.
   It reads through the gateway (`GET /artifacts/{digest}`) as the CI runner identity.
 
+- OPA evidence floors (`config/policy.rego`, tests: `opa test config/policy.rego config/policy_test.rego`):
+  the scoring service and the gateway both ask the `opa` container for the least strict decision
+  the evidence allows; the effective decision is max(score band, floor), so evidence can only make
+  a decision stricter. The chaincode accepts a decision at least as strict as the band's, never
+  weaker. If OPA is down, scoring and the gateway refuse (503), they do not fall back to bands.
+  Set `ATTESTA_OPA_URL=` (empty) in `.env` to run on bands alone. After editing `policy.rego`,
+  recreate OPA (`dc --profile gateway up -d --no-deps --force-recreate opa`): the file is bind-mounted.
+  Chaincode changes need `docker build -t attesta-trust-cc:local chaincode/attesta-trust` and
+  recreating the two chaincode containers (CCaaS: no lifecycle change).
 - `ATTESTA_DL_DIR` (attesta_DL checkout): the scoring services use the trained CNN
   (`docker-compose.dl.yml`, image `attesta-spire-scorer-dl:local`) instead of the
   heuristic stand-in. Only code, configs, the `m2_noshort` checkpoint and the name

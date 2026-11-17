@@ -52,12 +52,23 @@ def band_for_score(policy: PolicyConfig, score: int) -> Band:
     raise ValueError(f"score out of range: {score}")
 
 
-def evaluate(policy: PolicyConfig, score: int, attestation_verified: bool) -> PolicyResult:
+_RANK = {Decision.ALLOW: 0, Decision.WARN: 1, Decision.REVIEW: 2, Decision.BLOCK: 3}
+
+
+def stricter(a: Decision, b: Decision) -> Decision:
+    return a if _RANK[a] >= _RANK[b] else b
+
+
+def evaluate(policy: PolicyConfig, score: int, attestation_verified: bool,
+             floor: Decision = Decision.ALLOW) -> PolicyResult:
+    """Band decision, downgraded without attestation, then raised to `floor` (from the
+    OPA evidence rules). A floor can only make the decision stricter."""
     band = band_for_score(policy, score)
     decision = band.decision
     downgraded = not attestation_verified and decision in _DOWNGRADED
     if downgraded:
         decision = Decision.REVIEW
+    decision = stricter(decision, floor)
     return PolicyResult(
         band=band.name, decision=decision,
         policy_version=policy.policy_version, downgraded=downgraded,

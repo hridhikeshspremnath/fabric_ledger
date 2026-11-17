@@ -29,6 +29,7 @@ class ScoringSettings(BaseModel):
     scorer_key_id: str = "scorer-dev-1"
     allow_key_in_repo: bool = False  # dev escape hatch for gitignored demo keys
     policy_path: Path = Path("/config/policy.yaml")
+    opa_url: str = ""  # OPA server for evidence floors (config/policy.rego); empty = bands only
 
     # Pluggable model and label extractors ("package.module:callable")
     model_factory: str = "attesta.scoring.reference:build_model"

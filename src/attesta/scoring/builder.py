@@ -2,11 +2,12 @@
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 from attesta.policy.engine import PolicyConfig, evaluate
+from attesta.policy.opa import Floor
 from attesta.records.canonical import canonical_bytes, sha256_hex
-from attesta.records.trust_record import TrustRecord
+from attesta.records.trust_record import Decision, TrustRecord
 from attesta.scoring.attestation import Attestation
 from attesta.scoring.model import FLAG_NAMES, ExtractorResult, ModelOutput
 from attesta.scoring.registry import Artifact
@@ -51,13 +52,17 @@ class BuildContext:
     runner_class: str
     node_attestor: str
     aux_threshold: int
+    floor: Optional[Floor] = None  # OPA evidence floor; None = bands only
 
 
 def build_record(ctx: BuildContext, target: Target, artifact: Artifact, bundle: SourceBundle,
                  extracted: ExtractorResult, output: ModelOutput, attestation: Attestation,
                  cert_sha256: str, run_hint: str = "") -> TrustRecord:
-    result = evaluate(ctx.policy, output.risk_permille, attestation.verified)
     flags = combine_flags(extracted, output, ctx.aux_threshold)
+    floor = Decision.ALLOW
+    if ctx.floor is not None:  # raises OpaUnavailable: never score without the rules
+        floor = ctx.floor({**flags, "llm_verdict": "NOT_RUN"})
+    result = evaluate(ctx.policy, output.risk_permille, attestation.verified, floor)
     fields: dict[str, Any] = {
         "record_id": str(uuid.uuid4()), "run_id": make_run_id(run_hint),
         "submitted_by_spiffe_id": ctx.scoring_spiffe_id, "caller_cert_sha256": cert_sha256,

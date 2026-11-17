@@ -3,5 +3,6 @@
 # Use scripts/gateway-up.sh (default sqlite) to switch back.
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+dc --profile gateway up -d --no-deps --wait opa
 ATTESTA_BACKEND=fabric dc --profile gateway up -d --no-deps --force-recreate --wait gateway
 echo "Gateway now uses the Fabric backend. Next: scripts/demo-submit.sh"

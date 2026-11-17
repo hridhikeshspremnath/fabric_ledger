@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from attesta.policy.engine import PolicyConfig
+from attesta.policy.opa import Floor
 from attesta.records.trust_record import TrustRecord
 from attesta.scoring.attestation import AttestationProvider
 from attesta.scoring.builder import BuildContext, build_record
@@ -48,14 +49,16 @@ class ScoringService:
     def __init__(self, settings: ScoringSettings, fetcher: Fetcher, model: ScoringModel,
                  extractors: LabelExtractor, policy: PolicyConfig, signer: ScorerSigner,
                  attestation: AttestationProvider, submitter: Optional[Submitter],
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic,
+                 floor: Optional[Floor] = None) -> None:
         self._s, self._fetcher = settings, fetcher
         self._model, self._extractors = model, extractors
         self._attestation, self._submitter, self._clock = attestation, submitter, clock
         self._ctx = BuildContext(
             policy=policy, signer=signer, scoring_spiffe_id=settings.scoring_spiffe_id,
             model_version_hash=model.version_hash, runner_class=settings.runner_class,
-            node_attestor=settings.node_attestor, aux_threshold=settings.aux_threshold_permille)
+            node_attestor=settings.node_attestor, aux_threshold=settings.aux_threshold_permille,
+            floor=floor)
         self._limits = Limits(settings.max_files, settings.max_file_bytes,
                               settings.max_scanned_bytes, settings.max_uncompressed_bytes)
         self._slots = threading.BoundedSemaphore(settings.max_concurrent)

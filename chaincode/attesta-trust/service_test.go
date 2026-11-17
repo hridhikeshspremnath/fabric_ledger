@@ -119,12 +119,22 @@ func TestRejections(t *testing.T) {
 	e.expectErr(map[string]any{"record_id": recID2}, "duplicate run_id")
 	e.expectErr(map[string]any{"run_id": "run-0002"}, "duplicate record_id")
 	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002", "decision": json.Number("1")}, "invalid record")
-	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002", "decision": "BLOCK"}, "do not match policy")
+	// A weaker decision than the band's is refused (score 950 is CRITICAL => BLOCK).
+	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002", "risk_score": json.Number("950"),
+		"risk_band": "CRITICAL", "decision": "ALLOW"}, "do not match policy")
 	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002", "risk_band": "HIGH"}, "do not match policy")
 	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002", "policy_version": "p0"}, "active policy")
 	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002", "scorer_key_id": "nope"}, "unknown scorer key")
 	e.expectErr(map[string]any{"record_id": recID2, "run_id": "run-0002",
 		"submitted_by_spiffe_id": "spiffe://attesta.example.org/ci/build-runner"}, "allowed scorer")
+}
+
+// Evidence rules may raise a decision above its band, never lower it.
+func TestStricterThanBandIsAccepted(t *testing.T) {
+	e := newEnv(t)
+	if _, err := e.submit(map[string]any{"decision": "BLOCK"}); err != nil { // LOW band, BLOCK by evidence
+		t.Fatal(err)
+	}
 }
 
 func TestBadSignatureRejected(t *testing.T) {

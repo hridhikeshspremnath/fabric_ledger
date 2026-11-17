@@ -21,6 +21,9 @@ type Policy struct {
 	Bands           []Band `json:"bands"`
 }
 
+// decisionRank orders decisions from least to most strict.
+var decisionRank = map[string]int{"ALLOW": 0, "WARN": 1, "REVIEW": 2, "BLOCK": 3}
+
 // Validate requires contiguous bands covering 0..1000 with known names/decisions.
 func (p Policy) Validate() error {
 	if !reID.MatchString(p.PolicyVersion) {

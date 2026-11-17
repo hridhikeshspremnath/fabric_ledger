@@ -224,8 +224,10 @@ func (s *Service) RecordDecision(recordJSON string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if band != rec.RiskBand || decision != rec.Decision {
-		return "", fmt.Errorf("risk_band/decision do not match policy (expected %s/%s)", band, decision)
+	// The band must match. The decision may be STRICTER than the band's (evidence rules
+	// such as the OPA floors in config/policy.rego raise it) but never weaker.
+	if band != rec.RiskBand || decisionRank[rec.Decision] < decisionRank[decision] {
+		return "", fmt.Errorf("risk_band/decision do not match policy (expected %s/at least %s)", band, decision)
 	}
 
 	kr := &keyer{st: s.st}

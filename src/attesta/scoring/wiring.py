@@ -6,6 +6,7 @@ from attesta.backends.bridge_client import SpiffeBridgeClient
 from attesta.gateway.identity import identity_from_der
 from attesta.gateway.svid import create_svid_source
 from attesta.policy.engine import load_policy
+from attesta.policy.opa import opa_floor
 from attesta.scoring.attestation import build_attestation
 from attesta.scoring.errors import ConfigError
 from attesta.scoring.fetch import UrllibFetcher
@@ -41,4 +42,5 @@ def build_service(settings: ScoringSettings, dry_run_only: bool = False) -> Scor
         policy=load_policy(settings.policy_path),
         signer=signer,
         attestation=build_attestation(settings),
-        submitter=None if dry_run_only else build_gateway_submitter(settings))
+        submitter=None if dry_run_only else build_gateway_submitter(settings),
+        floor=opa_floor(settings.opa_url) if settings.opa_url else None)
