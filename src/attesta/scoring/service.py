@@ -8,7 +8,7 @@ from attesta.policy.engine import PolicyConfig
 from attesta.policy.opa import Floor
 from attesta.records.trust_record import TrustRecord
 from attesta.scoring.attestation import Attestation, AttestationProvider
-from attesta.scoring.builder import BuildContext, build_record
+from attesta.scoring.builder import BuildContext, build_record, combine_flags
 from attesta.scoring.errors import SubmitError
 from attesta.scoring.fetch import Fetcher
 from attesta.scoring.model import FLAG_NAMES, LabelExtractor, ScoringModel
@@ -37,7 +37,7 @@ class ScoreResult:
             "flags": {name: getattr(r, name) for name in FLAG_NAMES},
             "record_id": r.record_id, "run_id": r.run_id, "policy_version": r.policy_version,
             "model_version_hash": r.model_version_hash,
-            "attestation_verified": r.attestation_verified,
+            "attestation_verified": r.attestation_verified, "llm_verdict": r.llm_verdict.value,
             "submitted": self.ledger is not None, "cached": self.cached,
         }
         if self.ledger:
@@ -50,7 +50,8 @@ class ScoringService:
                  extractors: LabelExtractor, policy: PolicyConfig, signer: ScorerSigner,
                  attestation: AttestationProvider, submitter: Optional[Submitter],
                  clock: Callable[[], float] = time.monotonic,
-                 floor: Optional[Floor] = None) -> None:
+                 floor: Optional[Floor] = None, reviewer: Optional[Any] = None) -> None:
+        self._reviewer = reviewer  # GeminiReviewer or None (review off)
         self._s, self._fetcher = settings, fetcher
         self._model, self._extractors = model, extractors
         self._attestation, self._submitter, self._clock = attestation, submitter, clock
@@ -91,22 +92,33 @@ class ScoringService:
             bundle.package, bundle.version = target.package, target.version
             extracted = self._extractors.extract(bundle)
             output = self._model.predict(bundle)
+            review = self._review(bundle, extracted, output)
             result = self._sign_and_submit(target, artifact, bundle, extracted, output, run_hint,
-                                           dry_run, attestation)
+                                           dry_run, attestation, review)
         if not dry_run:
             with self._lock:
                 self._cache[key] = (self._clock(), result)
         return result
 
-    def _sign_and_submit(self, target, artifact, bundle, extracted, output, run_hint, dry_run, attestation):  # type: ignore[no-untyped-def]
+    def _review(self, bundle, extracted, output):  # type: ignore[no-untyped-def]
+        """LLM review of borderline packages (score >= llm_min_permille or any flag). Raises
+        ReviewError when a required review fails: no silent fall-back to "not run"."""
+        if self._reviewer is None:
+            return None
+        flags = combine_flags(extracted, output, self._ctx.aux_threshold)
+        if output.risk_permille < self._s.llm_min_permille and not any(flags.values()):
+            return None
+        return self._reviewer.review(bundle, flags)
+
+    def _sign_and_submit(self, target, artifact, bundle, extracted, output, run_hint, dry_run, attestation, review):  # type: ignore[no-untyped-def]
         if dry_run or self._submitter is None:
             record = build_record(self._ctx, target, artifact, bundle, extracted, output,
-                                  attestation, DRY_RUN_CERT, run_hint)
+                                  attestation, DRY_RUN_CERT, run_hint, review)
             return ScoreResult(record, None)
         last_error: Optional[SubmitError] = None
         for _ in range(2):  # one retry: the SVID may rotate between signing and connecting
             record = build_record(self._ctx, target, artifact, bundle, extracted, output,
-                                  attestation, self._submitter.cert_sha256(), run_hint)
+                                  attestation, self._submitter.cert_sha256(), run_hint, review)
             try:
                 return ScoreResult(record, self._submitter.submit(record))
             except SubmitError as exc:

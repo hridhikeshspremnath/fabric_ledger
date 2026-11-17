@@ -71,3 +71,15 @@ entries, calls `POST /v1/score` per dependency, prints REVIEW/WARN as warnings, 
 passes its inputs through environment variables. See `docs/examples/dependency-scan.yml`.
 GitHub-hosted runners must be able to reach the scoring service over HTTPS (reverse proxy or tunnel
 with TLS in front); the SPIFFE-authenticated hop stays between the scorer and the gateway.
+
+## Advisory LLM review (Gemini)
+Set `ATTESTA_LLM_MODEL` (demo `.env`) or `llm_model` (scoring.yaml) to enable. The scorer reviews packages
+whose score is at least `llm_min_permille` (300) or that raised any flag. The reply must be a fixed JSON
+verdict (BENIGN, SUSPICIOUS, MALICIOUS) from a schema-constrained call with no tools; the package text is
+sent as quoted data under an instruction to ignore anything inside it. The verdict and a hash of
+(model, prompt version, verdict, reason) go into the signed record (`llm_verdict`, `llm_evidence_hash`).
+It is stricter-only: `config/policy.rego` raises the floor to REVIEW for SUSPICIOUS and BLOCK for
+MALICIOUS, and BENIGN never lowers a decision. A required review that fails (Google 429/5xx after 2
+retries, bad answer) fails the scan instead of being skipped; the CI action then fails closed.
+The key is a file (`llm_api_key_path`, demo: `.runtime/llm_api_key`, gitignored), never an env var.
+Package source is sent to Google. Use a flash-lite model if the flash models are overloaded.

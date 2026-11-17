@@ -12,6 +12,7 @@ from attesta.policy.opa import opa_floor
 from attesta.scoring.attestation import build_attestation
 from attesta.scoring.errors import ConfigError
 from attesta.scoring.fetch import UrllibFetcher
+from attesta.scoring.llm import build_reviewer
 from attesta.scoring.model import load_factory
 from attesta.scoring.service import ScoringService
 from attesta.scoring.settings import ScoringSettings
@@ -48,4 +49,6 @@ def build_service(settings: ScoringSettings, dry_run_only: bool = False) -> Scor
             hosts=frozenset({urlsplit(settings.attestation_jwks_url).hostname or ""}),
             timeout=settings.fetch_timeout_seconds)),
         submitter=None if dry_run_only else build_gateway_submitter(settings),
-        floor=opa_floor(settings.opa_url) if settings.opa_url else None)
+        floor=opa_floor(settings.opa_url) if settings.opa_url else None,
+        reviewer=build_reviewer(settings.llm_model, settings.llm_api_key_path,
+                                settings.llm_timeout_seconds))

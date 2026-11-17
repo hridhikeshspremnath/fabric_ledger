@@ -22,5 +22,9 @@ class AttestationRejected(ScoringError):
     """The runner attestation credential was present but not acceptable."""
 
 
+class ReviewError(ScoringError):
+    """A required LLM review could not be completed."""
+
+
 class SubmitError(ScoringError):
     """The gateway refused or could not be reached."""

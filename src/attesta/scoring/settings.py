@@ -29,6 +29,12 @@ class ScoringSettings(BaseModel):
     scorer_key_id: str = "scorer-dev-1"
     allow_key_in_repo: bool = False  # dev escape hatch for gitignored demo keys
     policy_path: Path = Path("/config/policy.yaml")
+    # Advisory LLM review (Gemini API). Empty llm_model = off. Runs when the score is at least
+    # llm_min_permille or any flag is raised; a failed required review fails the scan.
+    llm_model: str = ""
+    llm_api_key_path: Path = Path("/run/attesta/llm_api_key")
+    llm_min_permille: int = 300
+    llm_timeout_seconds: float = 60.0
     opa_url: str = ""  # OPA server for evidence floors (config/policy.rego); empty = bands only
 
     # Pluggable model and label extractors ("package.module:callable")

@@ -1,0 +1,15 @@
+# Overlay: advisory LLM review in the scoring services (Gemini API). scripts/lib.sh applies it
+# when ATTESTA_LLM_MODEL is set in .env. The key is a file, never an env var or an image layer:
+# put it in .runtime/llm_api_key (gitignored; mode 644 like the demo scorer key, so uid 1002
+# can read it). Package source of borderline packages is sent to Google for review.
+x-llm: &llm
+  environment:
+    ATTESTA_SCORING_LLM_MODEL: ${ATTESTA_LLM_MODEL}
+  volumes:
+    - ./.runtime/llm_api_key:/run/attesta/llm_api_key:ro
+
+services:
+  scorer:
+    <<: *llm
+  scorer-cli:
+    <<: *llm

@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from attesta.scoring.errors import (
-    ArchiveError, AttestationRejected, ConfigError, FetchError, InvalidTarget, SubmitError)
+    ArchiveError, AttestationRejected, ConfigError, FetchError, InvalidTarget, ReviewError, SubmitError)
 from attesta.scoring.service import ScoringService
 
 
@@ -43,7 +43,7 @@ def create_api(service: ScoringService, token: str) -> FastAPI:
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         except InvalidTarget as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        except (FetchError, ArchiveError, SubmitError) as exc:
+        except (FetchError, ArchiveError, SubmitError, ReviewError) as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         except ConfigError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
