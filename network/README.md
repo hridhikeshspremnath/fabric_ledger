@@ -1,8 +1,9 @@
 # Attesta Fabric network (2.5.16, dev)
 
-2 orgs (AttestaMSP, AuditorMSP), 1 peer each (LevelDB), 1 Raft orderer
+3 orgs (AttestaMSP, AuditorMSP, ReleaseMSP), 1 peer each (LevelDB), 1 Raft orderer
 (batch timeout 500 ms), chaincode `attesta-trust` as a service, endorsement
-`AND('AttestaMSP.peer','AuditorMSP.peer')`. Dev identities come from cryptogen.
+`OutOf(2,'AttestaMSP.peer','AuditorMSP.peer','ReleaseMSP.peer')`: any two of the three orgs
+must endorse, so one org can be down and writes still commit. Dev identities come from cryptogen.
 
 Run everything from WSL2 inside the Linux filesystem (not /mnt/c).
 
@@ -34,3 +35,14 @@ Run everything from WSL2 inside the Linux filesystem (not /mnt/c).
 
 - Fabric proofs are block references (tx id, block hash chain), not Merkle proofs.
 - Two PKIs: SPIRE for workloads, cryptogen for Fabric (move to Fabric CA later).
+
+## Orgs and roles
+- **Attesta** (engineering): its bridge submits scorer records; its peer is the gateway's entry point.
+- **Auditor** (security): the only org whose identity may record decision overrides.
+- **Release**: a third independent endorser (peer 11051 on the host). Intended home for the deploy gate's
+  own-org reads; today it endorses and holds a full copy of the ledger. All three orgs run on one host
+  with dev cryptogen identities, so this models separation of duty, it does not provide it.
+- Tested on 2026-11-17: Auditor down or Release down: writes commit; both down: refused
+  ("no combination of peers can satisfy the endorsement policy").
+- Recreating the network (`07-down.sh --purge`, then steps 01-05) wipes the ledger. Take a copy of
+  `/api/ledger` first if you want to keep the records.

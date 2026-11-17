@@ -13,7 +13,7 @@ FABRIC_CFG_PATH="$NET_DIR/config" configtxgen -profile AttestaChannel \
 
 # DEV ONLY: the bridge containers run as uid 1004/1005 (SPIRE selectors), so
 # their org user key must be world-readable. These files are gitignored.
-for org in attesta auditor; do
+for org in attesta auditor release; do
     key_dir="$ORG_DIR/peerOrganizations/$org.example.com/users/User1@$org.example.com/msp/keystore"
     chmod 755 "$key_dir"
     chmod 644 "$key_dir"/*_sk

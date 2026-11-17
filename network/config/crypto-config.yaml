@@ -25,3 +25,12 @@ PeerOrgs:
       SANS: [localhost, 127.0.0.1]
     Users:
       Count: 1
+
+  - Name: Release
+    Domain: release.example.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS: [localhost, 127.0.0.1]
+    Users:
+      Count: 1

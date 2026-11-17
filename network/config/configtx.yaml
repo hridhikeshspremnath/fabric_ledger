@@ -1,4 +1,4 @@
-# 2 orgs (Attesta, Auditor), 1 peer each, 1 Raft orderer. Paths are relative to
+# 3 orgs (Attesta, Auditor, Release), 1 peer each, 1 Raft orderer. Paths are relative to
 # this file's directory (FABRIC_CFG_PATH=network/config).
 Organizations:
   - &OrdererOrg
@@ -36,6 +36,19 @@ Organizations:
       Endorsement: {Type: Signature, Rule: "OR('AuditorMSP.peer')"}
     AnchorPeers:
       - Host: peer0.auditor.example.com
+        Port: 7051
+
+  - &Release
+    Name: ReleaseMSP
+    ID: ReleaseMSP
+    MSPDir: ../organizations/peerOrganizations/release.example.com/msp
+    Policies:
+      Readers: {Type: Signature, Rule: "OR('ReleaseMSP.admin','ReleaseMSP.peer','ReleaseMSP.client')"}
+      Writers: {Type: Signature, Rule: "OR('ReleaseMSP.admin','ReleaseMSP.client')"}
+      Admins: {Type: Signature, Rule: "OR('ReleaseMSP.admin')"}
+      Endorsement: {Type: Signature, Rule: "OR('ReleaseMSP.peer')"}
+    AnchorPeers:
+      - Host: peer0.release.example.com
         Port: 7051
 
 Capabilities:
@@ -100,4 +113,5 @@ Profiles:
       Organizations:
         - *Attesta
         - *Auditor
+        - *Release
       Capabilities: *ApplicationCapabilities

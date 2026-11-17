@@ -12,7 +12,7 @@ CC_NAME="${CC_NAME:-attesta-trust}"
 CC_VERSION="${CC_VERSION:-1.0}"
 CC_SEQUENCE="${CC_SEQUENCE:-1}"
 CC_LABEL="${CC_LABEL:-attesta-trust_1}"
-CC_POLICY="AND('AttestaMSP.peer','AuditorMSP.peer')"
+CC_POLICY="OutOf(2,'AttestaMSP.peer','AuditorMSP.peer','ReleaseMSP.peer')"
 ORG_DIR="$NET_DIR/organizations"
 ART_DIR="$NET_DIR/channel-artifacts"
 ORDERER_CA="$ORG_DIR/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
@@ -22,16 +22,17 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 compose() { docker compose -f "$NET_DIR/docker-compose.fabric.yaml" "$@"; }
 
-peer_tls_ca() {  # <attesta|auditor>
+peer_tls_ca() {  # <attesta|auditor|release>
     echo "$ORG_DIR/peerOrganizations/$1.example.com/peers/peer0.$1.example.com/tls/ca.crt"
 }
 
-# Point the `peer` CLI at an org's Admin identity (host ports: attesta 7051, auditor 9051).
+# Point the `peer` CLI at an org's Admin identity (host ports: attesta 7051, auditor 9051, release 11051).
 use_org() {
     local org="$1" port msp
     case "$org" in
         attesta) port=7051; msp=AttestaMSP ;;
         auditor) port=9051; msp=AuditorMSP ;;
+        release) port=11051; msp=ReleaseMSP ;;
         *) die "unknown org: $org" ;;
     esac
     export CORE_PEER_TLS_ENABLED=true
@@ -45,10 +46,14 @@ peer_cli() { FABRIC_CFG_PATH="$NET_DIR/peercfg" peer "$@"; }
 
 ORDERER_ARGS=(-o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "$ORDERER_CA")
 
-# Both orgs must endorse every transaction.
+# Any two of the three orgs must endorse; the default pair is Attesta + Auditor.
+# Set ENDORSERS="attesta release" (etc.) to choose another pair.
 endorse_args() {
-    echo --peerAddresses localhost:7051 --tlsRootCertFiles "$(peer_tls_ca attesta)" \
-         --peerAddresses localhost:9051 --tlsRootCertFiles "$(peer_tls_ca auditor)"
+    local org port
+    for org in ${ENDORSERS:-attesta auditor}; do
+        case "$org" in attesta) port=7051 ;; auditor) port=9051 ;; release) port=11051 ;; *) die "unknown org: $org" ;; esac
+        echo --peerAddresses "localhost:$port" --tlsRootCertFiles "$(peer_tls_ca "$org")"
+    done
 }
 
 invoke() {  # <ctor-json> -- submits as the current use_org identity with both endorsers

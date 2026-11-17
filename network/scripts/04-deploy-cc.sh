@@ -23,11 +23,14 @@ install_for() {  # <org>
 
 package_for attesta attesta-trust-attesta
 package_for auditor attesta-trust-auditor
+package_for release attesta-trust-release
 install_for attesta
 install_for auditor
+install_for release
 
 ATTESTA_CC_ID="$(cat "$ART_DIR/pkgid-attesta")" AUDITOR_CC_ID="$(cat "$ART_DIR/pkgid-auditor")" \
-    compose --profile chaincode up -d attesta-trust-attesta attesta-trust-auditor
+    RELEASE_CC_ID="$(cat "$ART_DIR/pkgid-release")" \
+    compose --profile chaincode up -d attesta-trust-attesta attesta-trust-auditor attesta-trust-release
 
 approve_for() {  # <org>
     use_org "$1"
@@ -37,6 +40,7 @@ approve_for() {  # <org>
 }
 approve_for attesta
 approve_for auditor
+approve_for release
 
 use_org attesta
 # shellcheck disable=SC2046
